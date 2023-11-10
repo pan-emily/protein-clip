@@ -9,7 +9,25 @@ import matplotlib.pyplot as plt
 from transformers import EsmModel, EsmTokenizer
 
 # import local modules 
-from modules import propedia, seed, clustering, model
+from modules import propedia, seed, clustering, model, visualization
+
+# class PeptideReceptorDataset(Dataset):
+#     def __init__(self, clusters, cluster_ids):
+#         self.clusters = clusters
+#         self.cluster_ids = cluster_ids
+
+#     def __len__(self):
+#         return len(self.cluster_ids)
+
+#     def __getitem__(self, idx):
+#         curr_cluster = self.clusters[self.cluster_ids[idx]]
+#         curr_pair = random.choice(curr_cluster)
+#         peptide_sequence = curr_pair[0]
+#         receptor_sequence = curr_pair[1]
+#         return peptide_sequence, receptor_sequence
+
+import random
+from torch.utils.data import Dataset
 
 class PeptideReceptorDataset(Dataset):
     def __init__(self, clusters, cluster_ids):
@@ -20,15 +38,31 @@ class PeptideReceptorDataset(Dataset):
         return len(self.cluster_ids)
 
     def __getitem__(self, idx):
-        curr_cluster = self.clusters[self.cluster_ids[idx]]
+        # Retrieve the current cluster based on the provided index
+        curr_cluster_id = self.cluster_ids[idx]
+        curr_cluster = self.clusters[curr_cluster_id]
+
+        # Check if the current cluster is empty
+        if not curr_cluster:
+            # Handle the case where the cluster is empty
+            # You could raise an exception or handle it in a way that fits your application
+            raise ValueError(f"The cluster with ID '{curr_cluster_id}' is empty.")
+
+        # Choose a random pair from the current cluster
         curr_pair = random.choice(curr_cluster)
-        peptide_sequence = curr_pair[0]
-        receptor_sequence = curr_pair[1]
+        peptide_sequence, receptor_sequence = curr_pair
+
         return peptide_sequence, receptor_sequence
+
 
 def main():
     s = seed.set_seed()
-    peptides, receptors = propedia.get_data()
+    # peptides, receptors = propedia.get_data()
+
+    # Rather than get from propedia, just read from local fasta 
+    peptide_file_path = 'peptide.fasta'
+    receptor_file_path = 'receptor.fasta'
+    peptides, receptors = propedia.get_data_from_fasta(peptide_file_path, receptor_file_path)
     clusters, train_clusters, val_clusters, test_clusters = clustering.cluster(peptides, receptors, s)
 
     train_dataset = PeptideReceptorDataset(clusters, train_clusters)
@@ -64,7 +98,9 @@ def main():
     best_val_loss = float('inf')
     best_model_state = None
 
-    print(f"loss: {-torch.tensor(1/batch_size).log().item()}")
+    print(f"Encoder loss: {-torch.tensor(1/batch_size).log().item()}")
+
+    visualization.plot_raw_embedding_cosine_similarities(train_loader, tokenizer, trained_model, "cpu")
 
 
     return 

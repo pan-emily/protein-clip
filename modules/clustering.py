@@ -3,6 +3,7 @@ import random
 import torch 
 import numpy as np 
 import subprocess 
+from torch.utils.data import Dataset
 
 def set_seed(seed_value=42):
     random.seed(seed_value)
@@ -16,8 +17,6 @@ def set_seed(seed_value=42):
         torch.backends.cudnn.enabled = False
     return seed_value
 
-import subprocess
-
 # Function to run a shell command and capture its output
 def run_command(command):
     try:
@@ -26,6 +25,10 @@ def run_command(command):
         print(f"Command output: {result.stdout}")
     except subprocess.CalledProcessError as e:
         print(f"Error occurred: {e.stderr}")
+
+def filter_empty_clusters(clusters):
+    # Remove any clusters that are empty
+    return {cluster_id: cluster_data for cluster_id, cluster_data in clusters.items() if cluster_data}
 
 def cluster(receptors, peptides, seed):
     # # Commands to be executed
@@ -71,6 +74,7 @@ def cluster(receptors, peptides, seed):
             clusters[cluster_id].append((peptide_sequence, receptor_sequence))
 
     set_seed(seed)
+    clusters = filter_empty_clusters(clusters)
 
     cluster_ids = list(clusters.keys())
     random.shuffle(cluster_ids)

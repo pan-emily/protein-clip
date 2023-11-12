@@ -30,19 +30,19 @@ def filter_empty_clusters(clusters):
     # Remove any clusters that are empty
     return {cluster_id: cluster_data for cluster_id, cluster_data in clusters.items() if cluster_data}
 
-def cluster(receptors, peptides, seed):
-    # # Commands to be executed
-    # commands = [
-    #     "/Users/emilypan/Documents/Caltech/protein-clip/mmseqs version",
-    #     "mmseqs createdb receptor.fasta receptorDB",
-    #     "mmseqs cluster receptorDB receptorDB_clu tmp --min-seq-id 0.5",
-    #     "mmseqs createtsv receptorDB receptorDB receptorDB_clu receptorDB_clu.tsv"
-    # ]
+def cluster(peptides, receptors, seed):
+    # Commands to be executed
+    commands = [
+        "/Users/emilypan/Documents/Caltech/protein-clip/mmseqs version",
+        "mmseqs createdb receptor.fasta receptorDB",
+        "mmseqs cluster receptorDB receptorDB_clu tmp --min-seq-id 0.5",
+        "mmseqs createtsv receptorDB receptorDB receptorDB_clu receptorDB_clu.tsv"
+    ]
 
-    # # Run commands
-    # for cmd in commands:
-    #     print(f"Running command: {cmd}")
-    #     run_command(cmd)
+    # Run commands
+    for cmd in commands:
+        print(f"Running command: {cmd}")
+        run_command(cmd)
 
     id_to_seq = {}
     receptors_parsed = list(SeqIO.parse('receptor.fasta', 'fasta'))
@@ -74,7 +74,7 @@ def cluster(receptors, peptides, seed):
             clusters[cluster_id].append((peptide_sequence, receptor_sequence))
 
     set_seed(seed)
-    clusters = filter_empty_clusters(clusters)
+    # clusters = filter_empty_clusters(clusters)
 
     cluster_ids = list(clusters.keys())
     random.shuffle(cluster_ids)

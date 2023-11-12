@@ -5,6 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
+import os 
+from datetime import datetime
 
 from transformers import EsmModel, EsmTokenizer
 
@@ -57,12 +59,12 @@ class PeptideReceptorDataset(Dataset):
 
 def main():
     s = seed.set_seed()
-    # peptides, receptors = propedia.get_data()
+    peptides, receptors = propedia.get_data()
 
     # Rather than get from propedia, just read from local fasta 
-    peptide_file_path = 'peptide.fasta'
-    receptor_file_path = 'receptor.fasta'
-    peptides, receptors = propedia.get_data_from_fasta(peptide_file_path, receptor_file_path)
+    # peptide_file_path = 'peptide.fasta'
+    # receptor_file_path = 'receptor.fasta'
+    # peptides, receptors = propedia.get_data_from_fasta(peptide_file_path, receptor_file_path)
     clusters, train_clusters, val_clusters, test_clusters = clustering.cluster(peptides, receptors, s)
 
     train_dataset = PeptideReceptorDataset(clusters, train_clusters)
@@ -100,8 +102,44 @@ def main():
 
     print(f"Encoder loss: {-torch.tensor(1/batch_size).log().item()}")
 
-    visualization.plot_raw_embedding_cosine_similarities(train_loader, tokenizer, trained_model, "cpu")
+    now = datetime.now()
+    current_time = now.strftime("%H:%M:%S")
+    base_path = f'{os.getcwd()}/clip_{current_time}'
+    if not os.path.exists(base_path):
+        os.makedirs(base_path)
 
+    model_save_path = f'{base_path}/best_model.pth'
+    losses_save_path = f'{base_path}/losses_per_epoch.txt'
+
+    print(f"Saving best models to {model_save_path}. Saving losses to {losses_save_path}")
+
+    # visualization.plot_raw_embedding_cosine_similarities(train_loader, tokenizer, trained_model, "cpu")
+
+    # training loop 
+
+    with open(losses_save_path, 'w') as f:
+        f.write('Epoch,Train Loss,Validation Loss\n')
+
+        for epoch in range(25):
+            if training_with_grad_cache:
+                agg_batches = 1
+                train_loss = model.train_gc(trained_model, train_loader, tokenizer, optimizer, device, agg_batches)
+            else:
+                train_loss = model.train(trained_model, train_loader, optimizer, device)
+            val_loss = model.evaluate(trained_model, val_loader, device)
+
+            train_losses.append(train_loss)
+            val_losses.append(val_loss)
+
+            f.write(f"{epoch + 1},{train_loss:.4f},{val_loss:.4f}\n")
+
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                best_model_state = trained_model.state_dict()
+                torch.save(best_model_state, model_save_path)
+
+            torch.cuda.empty_cache()
+            print(f"Epoch {epoch + 1}/{num_epochs} - Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
 
     return 
 

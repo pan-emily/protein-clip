@@ -7,6 +7,7 @@ def compute_similarity_matrix(model, peptides, receptors):
     return similarity_matrix * torch.exp(-model.t)
 
 def plot_raw_embedding_cosine_similarities(train_loader, tokenizer, trained_model, device):
+    print("plotting")
     curr_peptides, curr_receptors = next(iter(train_loader))
     curr_peptides = tokenizer(curr_peptides, return_tensors='pt', padding=True).to(device)
     curr_receptors = tokenizer(curr_receptors, return_tensors='pt', padding=True).to(device)
@@ -20,11 +21,8 @@ def plot_raw_embedding_cosine_similarities(train_loader, tokenizer, trained_mode
     plt.title("Raw Embedding Cosine Similarities")
     plt.xlabel("Receptor Protein")
     plt.ylabel("Peptide")
-    plt.show()
+    # plt.show()
 
     plt.savefig('/output/raw_embedding_cosine_similarities.png')
 
-    del curr_peptides
-    del curr_receptors
-    del similarity_matrix
-    del similarity_matrix_np
+    return 

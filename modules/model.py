@@ -114,7 +114,7 @@ def contrastive_loss(x, y):
     loss = (L_r + L_p) * 0.5
     return loss
 
-def train_gc(model, data_loader, optimizer, device, agg_batches=2):
+def train_gc(model, data_loader, tokenizer, optimizer, device, agg_batches=2):
     model.train()
     total_loss = 0
 

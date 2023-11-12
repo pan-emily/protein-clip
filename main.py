@@ -121,12 +121,13 @@ def main():
         f.write('Epoch,Train Loss,Validation Loss\n')
 
         for epoch in range(25):
+            print('new epoch')
             if training_with_grad_cache:
                 agg_batches = 1
                 train_loss = model.train_gc(trained_model, train_loader, tokenizer, optimizer, device, agg_batches)
             else:
-                train_loss = model.train(trained_model, train_loader, optimizer, device)
-            val_loss = model.evaluate(trained_model, val_loader, device)
+                train_loss = model.train(trained_model, train_loader, optimizer, tokenizer, device)
+            val_loss = model.evaluate(trained_model, val_loader, device, tokenizer)
 
             train_losses.append(train_loss)
             val_losses.append(val_loss)

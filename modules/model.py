@@ -71,6 +71,7 @@ def compute_loss(pep_embedding, rec_embedding):
     return (L_r + L_p) * 0.5
 
 def process_batch(model, batch_data, device, tokenizer, compute_grad=False):
+    print('batch')
     peptides, receptors = batch_data
     peptides = tokenizer(peptides, return_tensors='pt', padding=True).to(device)
     receptors = tokenizer(receptors, return_tensors='pt', padding=True).to(device)
@@ -80,22 +81,22 @@ def process_batch(model, batch_data, device, tokenizer, compute_grad=False):
         loss.backward()
     return loss.item()
 
-def train(model, data_loader, optimizer, device):
+def train(model, data_loader, optimizer, tokenizer, device):
     model.train()
     total_loss = 0
     for batch_data in data_loader:
         optimizer.zero_grad()
-        loss = process_batch(model, batch_data, device, compute_grad=True)
+        loss = process_batch(model, batch_data, device, tokenizer, compute_grad=True)
         optimizer.step()
         total_loss += loss
     return total_loss / len(data_loader)
 
-def evaluate(model, data_loader, device):
+def evaluate(model, data_loader, device, tokenizer):
     model.eval()
     total_loss = 0
     with torch.no_grad():
         for batch_data in data_loader:
-            loss = process_batch(model, batch_data, device)
+            loss = process_batch(model, batch_data, device, tokenizer)
             total_loss += loss
     return total_loss / len(data_loader)
 
@@ -125,6 +126,7 @@ def train_gc(model, data_loader, tokenizer, optimizer, device, agg_batches=2):
 
     big_batches = 0
     for step, sub_batch in enumerate(data_loader):
+        print(f"batch {step}")
         xx, yy = sub_batch
         xx = tokenizer(xx, return_tensors='pt', padding=True).to(device)
         yy = tokenizer(yy, return_tensors='pt', padding=True).to(device)

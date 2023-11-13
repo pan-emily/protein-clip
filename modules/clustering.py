@@ -33,7 +33,6 @@ def filter_empty_clusters(clusters):
 def cluster(peptides, receptors, seed):
     # Commands to be executed
     commands = [
-        "/Users/emilypan/Documents/Caltech/protein-clip/mmseqs version",
         "mmseqs createdb receptor.fasta receptorDB",
         "mmseqs cluster receptorDB receptorDB_clu tmp --min-seq-id 0.5",
         "mmseqs createtsv receptorDB receptorDB receptorDB_clu receptorDB_clu.tsv"

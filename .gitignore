@@ -1,0 +1,11 @@
+# Ignore the data directory
+data/
+
+# Ignore the runs directory
+runs/
+
+# Ignore Python compiled files and __pycache__ directories
+__pycache__/
+*.pyc
+*.pyo
+*.pyd

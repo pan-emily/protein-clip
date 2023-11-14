@@ -1,5 +1,6 @@
-# protein-clip
+# CLIP Model for Peptide-Receptor Interactions
 CS 101 Project 
+Contributors: Ayush Varshney, Emily Pan, Evan Zhang, Jadelynn Dao
 
 Running ```main.py``` extracts proten-receptor data from Propedia, then builds + trains a CLIP model. 
 

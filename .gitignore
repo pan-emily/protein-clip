@@ -5,7 +5,7 @@ data/
 runs/
 
 # Ignore Python compiled files and __pycache__ directories
-__pycache__/
+modules/__pycache__/
 *.pyc
 *.pyo
 *.pyd

@@ -1,5 +1,4 @@
 import os
-from datetime import datetime
 import matplotlib.pyplot as plt
 import torch
 
@@ -18,7 +17,7 @@ def plot_embedding_cosine_similarities(base_path, title, data_loader, tokenizer,
     plt.title(title)
     plt.xlabel("Receptor Protein")
     plt.ylabel("Peptide")
-    plot_path = _save_plot(base_path, 'embedding_cosine_similarities')
+    plot_path = _save_plot(base_path)
     print(f"{title} plot saved to {plot_path}")
 
 def _compute_embedding_cosine_similarities(model, peptides, receptors):
@@ -34,15 +33,16 @@ def plot_loss_curves(base_path, train_losses, val_losses, train_batch_size, val_
     plt.xlabel('Epochs')
     plt.ylabel('Loss Relative to Random')
     plt.legend()
-    plot_path = _save_plot(base_path, 'loss_curves')
+    plot_path = _save_plot(base_path)
     print(f"{title} plot saved to {plot_path}")
 
-def _save_plot(base_path, subfolder):
-    folder_path = os.path.join(base_path, "figures", subfolder)
+def _save_plot(base_path, fig_num=[1]):
+    folder_path = os.path.join(base_path, "figures")
     os.makedirs(folder_path, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-    filename = timestamp + ".png"
+    filename = f"figure {fig_num[0]}.png"
     plot_path = os.path.join(folder_path, filename)
+    plt.tight_layout()
     plt.savefig(plot_path)
     plt.clf()
+    fig_num[0] += 1
     return plot_path

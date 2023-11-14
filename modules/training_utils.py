@@ -8,7 +8,7 @@ def train(model, data_loader, optimizer, tokenizer, device):
     total_loss = 0
     for batch_data in data_loader:
         optimizer.zero_grad()
-        loss = _process_batch(model, batch_data, tokenizer, device, ompute_grad=True)
+        loss = _process_batch(model, batch_data, tokenizer, device, compute_grad=True)
         optimizer.step()
         total_loss += loss
     return total_loss / len(data_loader)

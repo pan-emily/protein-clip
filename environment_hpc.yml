@@ -1,4 +1,4 @@
-name: protein-clip2
+name: protein-clip
 channels:
   - bioconda
   - pytorch
@@ -215,4 +215,4 @@ dependencies:
   - zstd=1.5.5
   - pip:
       - gradcache==0.0.1
-prefix: /groups/mlprojects/protein-clip-pjt/miniconda3/envs/protein-clip2
+prefix: /groups/mlprojects/protein-clip-pjt/miniconda3/envs/protein-clip

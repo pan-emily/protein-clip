@@ -17,7 +17,7 @@ def evaluate(model, data_loader, tokenizer, device):
     model.eval()
     total_loss = 0
     with torch.no_grad():
-        for batch_data in data_loader:
+        for step, batch_data in enumerate(data_loader):
             loss = _process_batch(model, batch_data, tokenizer, device)
             total_loss += loss
     return total_loss / len(data_loader)
@@ -51,10 +51,11 @@ def train_gc(model, data_loader, tokenizer, optimizer, scaler, device, accumulat
 
     big_batches = 0
     for step, sub_batch in enumerate(data_loader):
-        print(f"batch {step}")
         xx, yy = sub_batch
+
         xx = tokenizer(xx, return_tensors='pt', padding=True).to(device)
         yy = tokenizer(yy, return_tensors='pt', padding=True).to(device)
+
         xx['temperature'] = model.temperature
         yy['temperature'] = model.temperature
 
@@ -68,6 +69,7 @@ def train_gc(model, data_loader, tokenizer, optimizer, scaler, device, accumulat
 
         if (step + 1) % accumulated_batches == 0:
             big_batches += 1
+            print(step)
             loss = _contrastive_loss_gc(cache_x, cache_y)
             total_loss += loss.item()
             scaler.scale(loss).backward()
@@ -85,6 +87,9 @@ def train_gc(model, data_loader, tokenizer, optimizer, scaler, device, accumulat
             scaler.step(optimizer)
             scaler.update()
             optimizer.zero_grad()
+
+        # if (step + 1) == accumulated_batches * 10:
+        #     break
 
     return total_loss / big_batches
 

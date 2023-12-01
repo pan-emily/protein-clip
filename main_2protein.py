@@ -4,9 +4,9 @@ import torch
 from torch.utils.data import DataLoader
 from torch.cuda.amp import GradScaler
 from transformers import EsmModel, EsmTokenizer
-from pathlib import Path
 
-from modules import seed, models, data_utils, visualizations, training_utils
+from modules import seed, models, data_utils_2protein, visualizations, training_utils
+from pathlib import Path
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -23,7 +23,7 @@ def main():
         param.requires_grad = False
     input_dim = 640
 
-    # set model hyperparameters     
+    # set model hyperparameters
     embedding_dim = 128
     h1 = 2
     h2 = 2
@@ -32,16 +32,17 @@ def main():
 
     # set dataloader hyperparameters
     batch_size = 16
-    train_dataset, val_dataset, test_dataset = data_utils.generate_datasets()
+    train_dataset, val_dataset, test_dataset = data_utils_2protein.generate_datasets()
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
 
     data_dir = Path('data')
-    visualizations.plot_protein_lengths(base_path, data_dir, prefix1='peptide', prefix2='receptor')
+    visualizations.plot_clustering(base_path, data_dir, prefix='protein2')
+    visualizations.plot_protein_lengths(base_path, data_dir)
 
     # set training hyperparameters 
-    num_epochs = 25
+    num_epochs = 10
     optimizer = torch.optim.Adam(trained_model.parameters(), lr=1e-3)
     training_with_grad_cache = True
     if training_with_grad_cache:
@@ -75,10 +76,17 @@ def main():
 
             f.write(f"{epoch + 1},{train_loss:.4f},{val_loss:.4f}\n")
 
+
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 best_model_state = trained_model.state_dict()
                 torch.save(best_model_state, model_save_path)
+                best_trained_model = models.ExtendedCLIP(input_dim, embedding_dim, h1, h2, dropout, esm_model).to(device)
+                best_trained_model.load_state_dict(torch.load(model_save_path))
+
+                visualizations.plot_embedding_cosine_similarities(base_path, f"Trained Embedding Cosine Similarities on Train Set - Epoch {epoch + 1}", train_loader, tokenizer, best_trained_model, device)    
+                visualizations.plot_embedding_cosine_similarities(base_path, f"Trained Embedding Cosine Similarities on Val Set - Epoch {epoch + 1}", val_loader, tokenizer, best_trained_model, device)
+
 
             torch.cuda.empty_cache()
             print(f"Epoch {epoch + 1}/{num_epochs} - Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")

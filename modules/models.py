@@ -57,11 +57,12 @@ class ExtendedCLIP(nn.Module):
         return pep_embedding, rec_embedding
 
 class FILIPEncoder(nn.Module):
-    def __init__(self, input_dim, embedding_dim, h1, h2, dropout_rate):
+    def __init__(self, input_dim, embedding_dim, h1, h2, dropout_rate, esm_model):
         super(FILIPEncoder, self).__init__()
         self.projection = nn.Linear(input_dim, embedding_dim)
         self.amino_acid_ffn = self._build_ffn(embedding_dim, h1, dropout_rate)
         self.embedding_ffn = self._build_ffn(embedding_dim, h2, dropout_rate)
+        self.esm_model = esm_model
 
     def _build_ffn(self, embedding_dim, depth, dropout_rate):
         layers = [nn.Sequential(
@@ -77,16 +78,16 @@ class FILIPEncoder(nn.Module):
         input_ids = seq['input_ids']
         attn_mask = seq['attention_mask']
         temperature = seq['temperature']
-        esm_embedding = esm_model(input_ids=input_ids, attention_mask=attn_mask).last_hidden_state
+        esm_embedding = self.esm_model(input_ids=input_ids, attention_mask=attn_mask).last_hidden_state
         embedding = self.projection(esm_embedding)
         amino_acid_embedding = self.amino_acid_ffn(embedding)
         return amino_acid_embedding, attn_mask
 
 class ExtendedFILIP(nn.Module):
-    def __init__(self, input_dim, embedding_dim, h1, h2, dropout):
+    def __init__(self, input_dim, embedding_dim, h1, h2, dropout, esm_model):
         super(ExtendedFILIP, self).__init__()
-        self.pep_encoder = FILIPEncoder(input_dim, embedding_dim, h1, h2, dropout)
-        self.rec_encoder = FILIPEncoder(input_dim, embedding_dim, h1, h2, dropout)
+        self.pep_encoder = FILIPEncoder(input_dim, embedding_dim, h1, h2, dropout, esm_model)
+        self.rec_encoder = FILIPEncoder(input_dim, embedding_dim, h1, h2, dropout, esm_model)
         self.temperature = nn.Parameter(torch.tensor(1.0))
 
     def forward(self, pep_seq, rec_seq):

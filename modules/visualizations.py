@@ -26,6 +26,35 @@ def _compute_embedding_cosine_similarities(model, peptides, receptors):
     similarity_matrix = torch.mm(peptides_embedding, receptors_embedding.t())
     return similarity_matrix * torch.exp(-model.temperature)
 
+def _compute_embedding_cosine_similarities_filip(model, peptides, receptors):
+    sim_scores_A, sim_scores_B = model(peptides, receptors)
+
+    print(sim_scores_A)
+    print(sim_scores_B)
+    # Choose either sim_scores_A or sim_scores_B based on your specific use case
+    # For example, you can average them or just use one of them
+    similarity_matrix = (sim_scores_A + sim_scores_B) / 2
+    return similarity_matrix
+
+
+def plot_embedding_cosine_similarities_filip(base_path, title, data_loader, tokenizer, model, device):
+    curr_peptides, curr_receptors = next(iter(data_loader))
+    curr_peptides = tokenizer(curr_peptides, return_tensors='pt', padding=True).to(device)
+    curr_receptors = tokenizer(curr_receptors, return_tensors='pt', padding=True).to(device)
+
+    similarity_matrix = _compute_embedding_cosine_similarities_filip(model, curr_peptides, curr_receptors)
+    similarity_matrix_np = similarity_matrix.cpu().detach().numpy()
+
+    plt.figure(figsize=(6, 4))
+    plt.imshow(similarity_matrix_np, cmap="ocean", vmin=-1, vmax=1)
+    plt.colorbar()
+    plt.title(title)
+    plt.xlabel("Receptor Protein")
+    plt.ylabel("Peptide")
+    plot_path = _save_plot(base_path)
+    print(f"{title} plot saved to {plot_path}")
+
+
 def plot_loss_curves(base_path, train_losses, val_losses, train_batch_size, val_batch_size):
     title = 'Training and Validation Loss Relative to Random'
     plt.plot([i/-torch.tensor(1/train_batch_size).log().item() for i in train_losses], label='Train Loss')

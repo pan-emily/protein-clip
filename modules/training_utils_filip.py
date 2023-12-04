@@ -14,8 +14,8 @@ def _contrastive_loss(logits: torch.Tensor, use_dcl: bool = False):
 
 
 def _compute_loss(sim_scores_A, sim_scores_B):
-    loss_A = _contrastive_loss(sim_scores_A, use_dcl=True)
-    loss_B = _contrastive_loss(sim_scores_B, use_dcl=True)
+    loss_A = _contrastive_loss(sim_scores_A, use_dcl=False)
+    loss_B = _contrastive_loss(sim_scores_B, use_dcl=False)
     return (loss_A + loss_B) / 2
 
 def _process_batch(model, batch_data, tokenizer, device, compute_grad=False):
@@ -40,11 +40,11 @@ def train(model, data_loader, optimizer, tokenier, device):
         total_loss += loss
     return total_loss / len(data_loader)
 
-def evaluate(model, data_loader, device):
+def evaluate(model, data_loader, tokenizer, device):
     model.eval()
     total_loss = 0
     with torch.no_grad():
         for batch_data in data_loader:
-            loss = _process_batch(model, batch_data, device)
+            loss = _process_batch(model, batch_data, tokenizer, device)
             total_loss += loss
     return total_loss / len(data_loader)

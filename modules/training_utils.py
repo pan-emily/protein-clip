@@ -1,6 +1,7 @@
 import torch 
 from grad_cache.functional import cached, cat_input_tensor
 from torch.cuda.amp import autocast
+import numpy as np
 
 
 def train(model, data_loader, optimizer, tokenizer, device):
@@ -92,6 +93,66 @@ def train_gc(model, data_loader, tokenizer, optimizer, scaler, device, accumulat
         #     break
 
     return total_loss / big_batches
+
+@cat_input_tensor
+@autocast()
+def get_logits(x, y):
+    logits = torch.matmul(x, y.transpose(0, 1))
+    exp_logits = torch.exp(logits)
+    return exp_logits
+
+def eval_gc_allrec_onepep(model, data_loader, device, tokenizer, trained_model, 
+                          val_loader, agg_batches=2, k = 0):
+    model.eval()
+
+    cache_x = []
+    cache_y = []
+    big_batches = []
+
+    onerec = None
+    inc = 0
+    for step, sub_batch in enumerate(data_loader):
+        xx, yy = sub_batch
+        if k//len(xx) == inc:
+            onerec = xx[k % len(sub_batch[1])]
+        inc += 1
+
+    for step, sub_batch in enumerate(data_loader):
+        xx, yy = sub_batch
+        xx = (onerec,) * len(xx)
+
+        xx = tokenizer(xx, return_tensors='pt', padding=True).to(device)
+        yy = tokenizer(yy, return_tensors='pt', padding=True).to(device)
+        xx['temperature'] = model.temperature
+        yy['temperature'] = model.temperature
+
+        rx, cx = _call_model_gc(model.pep_encoder, xx)
+        ry, cy = _call_model_gc(model.rec_encoder, yy)
+
+        cache_x.append(rx)
+        cache_y.append(ry)
+        if (step + 1) % agg_batches == 0:
+            logits = get_logits(cache_x, cache_y)
+            correct_logit = torch.diag(logits).tolist()[k]
+            # big_batches.append(np.argsort(torch.diag(logits).tolist())[k])
+
+            greater_logits_count = torch.sum(torch.diag(logits) > correct_logit).item() + 1
+            big_batches.append(greater_logits_count)
+
+            cache_x = []
+            cache_y = []
+
+            return big_batches
+
+            onerec = None
+            inc = 0
+            for step, sub_batch in enumerate(data_loader):
+                xx, yy = sub_batch
+                if k//len(xx) == inc:
+                    onerec = xx[k % len(sub_batch[1])]
+                inc += 1
+
+        
 
 @cached
 @autocast()

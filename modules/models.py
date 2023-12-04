@@ -81,6 +81,8 @@ class FILIPEncoder(nn.Module):
         esm_embedding = self.esm_model(input_ids=input_ids, attention_mask=attn_mask).last_hidden_state
         embedding = self.projection(esm_embedding)
         amino_acid_embedding = self.amino_acid_ffn(embedding)
+        # normed_embedding = F.normalize(amino_acid_embedding, dim=-1)
+        # scaled_embedding = normed_embedding * torch.exp(temperature / 2)
         return amino_acid_embedding, attn_mask
 
 class ExtendedFILIP(nn.Module):
@@ -127,7 +129,7 @@ class ExtendedFILIP(nn.Module):
         return logits
 
     @staticmethod
-    def filip_similarity_score(
+    def _filip_similarity_score(
         hA: torch.Tensor,
         hB: torch.Tensor,
         maskA: torch.Tensor,

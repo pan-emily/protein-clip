@@ -18,13 +18,19 @@ Model versioning is based on time of run, so model/losses will be saved to direc
 Create a new Anaconda environment from ```environment.yml``` using the command
     > ```conda env create -f environment.yml```
 
+Running scripts should simply require you to run the specified file using the anaconda version of python3. 
+
 ### If running on HPC: 
 
 Create a new Anaconda environment from ```environment_hpc.yml``` using the command
     > ```conda env create -f environment_hpc.yml```
 
+To run the scripts, follow the documentation for your specific computing cluster. 
+
 
 ## Peptide-Receptor CLIP
+
+The peptide-receptor CLIP model should be ran using the script ```peptide-protein.py```. 
 
 ## Protein-Protein CLIP 
 

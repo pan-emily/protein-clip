@@ -12,6 +12,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     seed.set_seed()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    timestamp = "20231201_190729_089146"
     base_path = f'{os.getcwd()}/runs/{timestamp}'
     os.makedirs(base_path, exist_ok=True)
     print(f"All run info will be saved to {base_path}")
@@ -31,7 +32,7 @@ def main():
     trained_model = models.ExtendedCLIP(input_dim, embedding_dim, h1, h2, dropout, esm_model).to(device)
 
     # set dataloader hyperparameters
-    batch_size = 10
+    batch_size = 16
     train_dataset, val_dataset, test_dataset = data_utils_2protein.generate_datasets()
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
@@ -42,12 +43,12 @@ def main():
     visualizations.plot_protein_lengths(base_path, data_dir)
 
     # set training hyperparameters 
-    num_epochs = 15
+    num_epochs = 10
     optimizer = torch.optim.Adam(trained_model.parameters(), lr=1e-3)
     training_with_grad_cache = True
     if training_with_grad_cache:
         scaler = GradScaler()
-        accumulated_batches = 1
+        accumulated_batches = 32
 
     # init before training
     train_losses, val_losses = [], []
@@ -58,6 +59,8 @@ def main():
     losses_save_path = f'{base_path}/losses_per_epoch.txt'
     print(f"Best model will be saved to {model_save_path}")
     print(f"Losses will be saved to {losses_save_path}")
+
+    trained_model.load_state_dict(torch.load(model_save_path))
 
     # training 
     with open(losses_save_path, 'w') as f:

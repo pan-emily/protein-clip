@@ -38,6 +38,7 @@ We have done a degree of hyperparameter tuning, with the current model at the fo
 
 - ESM Tokenizer: ```facebook/esm2_t30_150M_UR50D```
 - Embedding dimension ```128```
+- Feedforward network layers ```h1 = 2, h2 = 2```
 - Dropout rate: ```0.1```
 - Batch size ```16``` + gradient Accumulation ```16``` = total batch size ```256```
 

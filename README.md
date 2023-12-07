@@ -13,11 +13,16 @@ Model versioning is based on time of run, so model/losses will be saved to direc
 
 ## Environment Setup
 
-### If running locally: 
+### If running locally:
+
 Create a new Anaconda environment from ```environment.yml``` using the command
     > ```conda env create -f environment.yml```
 
 ### If running on HPC: 
+
+Create a new Anaconda environment from ```environment_hpc.yml``` using the command
+    > ```conda env create -f environment_hpc.yml```
+
 
 ## Peptide-Receptor CLIP
 

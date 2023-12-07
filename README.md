@@ -5,6 +5,8 @@ Contributors: Ayush Varshney, Emily Pan, Evan Zhang, Jadelynn Dao
 ## Abstract
 This study delves into the innovative application of advanced machine learning models, primarily CLIP (Contrastive Language–Image Pretraining) and FILIP, for predicting protein-protein binding interactions. We have extended the utility of these models beyond their conventional domains by implementing and fine-tuning them to address the complex challenges in bioinformatics. Our approach encompasses the integration of gradient caching to enhance computational efficiency, and the novel application of contrastive learning techniques. This research not only demonstrates the feasibility of using these models for prediction of protein-peptide interactions but also explores their potential in understanding protein-protein binding mechanisms. Our work represents a significant leap in computational biology, offering new pathways for drug discovery and therapeutic development.
 
+![](fig/clip-model.png)
+
 # Documentation
 
 #### TL;DR: 
@@ -35,6 +37,7 @@ To give some examples for Caltech HPC, refer to the corresponding file in ```hpc
 ## Default Parameters
 We have done a degree of hyperparameter tuning, with the current model at the following parameters. You are welcome to iterate on our work! 
 
+- ```mmseqs2 min-seq-id = 0.5```
 - ESM Tokenizer: ```facebook/esm2_t30_150M_UR50D```
 - Embedding dimension ```128```
 - Feedforward network layers ```h1 = 2, h2 = 2```
@@ -51,6 +54,9 @@ The dataset will automatically be processed and divided into a 70\% / 15\% / 15\
 
 For each epoch, the losses are recorded, which should save to a timestamp-labeled folder. Additionally, the cosine similarity matrix for each epoch will be saved. 
 
+![](fig/clip_similarity_matrix.png)
+![](fig/clip_topk.png)
+
 ## Protein-Protein CLIP 
 
 The protein-protein CLIP model should be ran using the script ```main_2protein.py```. The shell file corresponding for HPC usage is ```run-main_2protein.sh```. 
@@ -61,7 +67,13 @@ The dataset will automatically be processed and divided into a 70\% / 15\% / 15\
 
 For each epoch, the losses are recorded, which should save to a timestamp-labeled folder. Additionally, the cosine similarity matrix for each epoch will be saved. 
 
+![protein-protein](fig/protein_protein_similarity.png)
+![protein topk](fig/protein_protein_topk.png)
+
 ## Protein-Receptor FILIP 
+
+![filip-schema](fig/filip-schema.png)
+
 The peptide-receptor FILIP model should be ran using the script ```main_2protein_filip.py```. The shell file corresponding for HPC usage is ```run-main_filip.sh```. The dataset will be clustered using the [mmseqs2](https://github.com/soedinglab/MMseqs2) library. 
 
 Running this script will pull the 19.814 peptide-receptor pair dataset from [Propedia](http://bioinfo.dcc.ufmg.br/propedia/). 
@@ -69,6 +81,18 @@ Running this script will pull the 19.814 peptide-receptor pair dataset from [Pro
 The dataset will automatically be processed and divided into a 70\% / 15\% / 15\% train / test / validate split. 
 
 For each epoch, the losses are recorded, which should save to a timestamp-labeled folder. Additionally, the cosine similarity matrix for each epoch will be saved. 
+![Filip performance](fig/filip_performance.png)
+![Clip vs Filip](fig/clip_v_filip.png)
+
+## Masked Language Model 
+
+![masked language model](fig/masked_language_model.png)
+
+Experimentation with the masked language model was largely ad-hoc. See ```notebooks/MLM_Testing.ipynb```. 
+
+![mlm performance](fig/mlm_performance.png)
+![mlm performance](fig/mlm_performance2.png)
+
 
 ## Visualizations
 
@@ -83,6 +107,9 @@ Generate top-k accuracies by running ```topk.py``` or ```run-topk.sh```. This wi
 ### Principal Component Analysis 
 
 Principal component analysis modularization is to come. Currently, we have an ad-hoc solution that can be referenced in ```notebooks/batchwise_pca```. This will generate a 2-D Principal Component Analysis and plot the points on a a 2d plane. 
+
+![](fig/2d_pca_colorized.png)
+![pca embed](fig/pca_embed.png)
 
 # References
 1. A. Radford, J. W. Kim, C. Hallacy, A. Ramesh, G. Goh, S. Agarwal, ... I. Sutskever. (2021). [Learning Transferable Visual Models From Natural Language Supervision. ](https://arxiv.org/pdf/2103.00020.pdf)

@@ -5,7 +5,8 @@ Contributors: Ayush Varshney, Emily Pan, Evan Zhang, Jadelynn Dao
 ## Abstract
 This study delves into the innovative application of advanced machine learning models, primarily CLIP (Contrastive Language–Image Pretraining) and FILIP, for predicting protein-protein binding interactions. We have extended the utility of these models beyond their conventional domains by implementing and fine-tuning them to address the complex challenges in bioinformatics. Our approach encompasses the integration of gradient caching to enhance computational efficiency, and the novel application of contrastive learning techniques. This research not only demonstrates the feasibility of using these models for prediction of protein-peptide interactions but also explores their potential in understanding protein-protein binding mechanisms. Our work represents a significant leap in computational biology, offering new pathways for drug discovery and therapeutic development.
 
-![](fig/clip-model.png)
+<img src="fig/clip-model.png" height="300">
+
 
 # Documentation
 
@@ -54,8 +55,9 @@ The dataset will automatically be processed and divided into a 70\% / 15\% / 15\
 
 For each epoch, the losses are recorded, which should save to a timestamp-labeled folder. Additionally, the cosine similarity matrix for each epoch will be saved. 
 
-![](fig/clip_similarity_matrix.png)
-![](fig/clip_topk.png)
+
+<img src="fig/clip_similarity_matrix.png" height="200">
+<img src="fig/clip_topk.png" height="200">
 
 ## Protein-Protein CLIP 
 
@@ -67,8 +69,8 @@ The dataset will automatically be processed and divided into a 70\% / 15\% / 15\
 
 For each epoch, the losses are recorded, which should save to a timestamp-labeled folder. Additionally, the cosine similarity matrix for each epoch will be saved. 
 
-![protein-protein](fig/protein_protein_similarity.png)
-![protein topk](fig/protein_protein_topk.png)
+<img src="fig/protein_protein_similarity.png" height="200">
+<img src="fig/protein_protein_topk.png" height="200">
 
 ## Protein-Receptor FILIP 
 
@@ -81,17 +83,18 @@ Running this script will pull the 19.814 peptide-receptor pair dataset from [Pro
 The dataset will automatically be processed and divided into a 70\% / 15\% / 15\% train / test / validate split. 
 
 For each epoch, the losses are recorded, which should save to a timestamp-labeled folder. Additionally, the cosine similarity matrix for each epoch will be saved. 
-![Filip performance](fig/filip_performance.png)
-![Clip vs Filip](fig/clip_v_filip.png)
+
+<img src="fig/filip_performance.png" height="200">
+<img src="fig/clip_v_filip.png" height="200">
 
 ## Masked Language Model 
 
-![masked language model](fig/masked_language_model.png)
+<img src="fig/masked_language_model.png" height="200">
 
 Experimentation with the masked language model was largely ad-hoc. See ```notebooks/MLM_Testing.ipynb```. 
 
-![mlm performance](fig/mlm_performance.png)
-![mlm performance](fig/mlm_performance2.png)
+<img src="fig/mlm_performance.png" height="200">
+<img src="fig/mlm_performance2.png" height="200">
 
 
 ## Visualizations
@@ -108,8 +111,9 @@ Generate top-k accuracies by running ```topk.py``` or ```run-topk.sh```. This wi
 
 Principal component analysis modularization is to come. Currently, we have an ad-hoc solution that can be referenced in ```notebooks/batchwise_pca```. This will generate a 2-D Principal Component Analysis and plot the points on a a 2d plane. 
 
-![](fig/2d_pca_colorized.png)
-![pca embed](fig/pca_embed.png)
+<img src="fig/2d_pca_colorized.png" height="200">
+<img src="fig/pca_embed.png" height="200">
+
 
 # References
 1. A. Radford, J. W. Kim, C. Hallacy, A. Ramesh, G. Goh, S. Agarwal, ... I. Sutskever. (2021). [Learning Transferable Visual Models From Natural Language Supervision. ](https://arxiv.org/pdf/2103.00020.pdf)

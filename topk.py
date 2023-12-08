@@ -42,24 +42,9 @@ def main():
     data_dir = Path('data')
     visualizations.plot_clustering(base_path, data_dir, prefix='protein2')
     visualizations.plot_protein_lengths(base_path, data_dir)
-
-    # set training hyperparameters 
-    num_epochs = 15
-    optimizer = torch.optim.Adam(trained_model.parameters(), lr=1e-3)
-    training_with_grad_cache = True
-    if training_with_grad_cache:
-        scaler = GradScaler()
-        accumulated_batches = 1
-
-    # init before training
-    train_losses, val_losses = [], []
-    best_val_loss = float('inf')
-    best_model_state = None
     visualizations.plot_embedding_cosine_similarities(base_path, "Raw Embedding Cosine Similarities", train_loader, tokenizer, trained_model, device)
+   
     model_save_path = '/groups/mlprojects/protein-clip-pjt/protein-clip/runs/20231201_190729_089146/best_model.pth'
-    # losses_save_path = f'{base_path}/losses_per_epoch.txt'
-    print(f"Best model will be saved to {model_save_path}")
-    # print(f"Losses will be saved to {losses_save_path}")
     
     # analyzing performance after training
     best_trained_model = models.ExtendedCLIP(input_dim, embedding_dim, h1, h2, dropout, esm_model).to(device)

@@ -16,26 +16,57 @@ from rcsbsearchapi.const import CHEMICAL_ATTRIBUTE_SEARCH_SERVICE, STRUCTURE_ATT
 from rcsbsearchapi.search import AttributeQuery
 from modules import visualizations
 
-
 class ProteinProteinDataset(Dataset):
+    """
+    Custom PyTorch Dataset class for protein-protein interactions.
+    
+    Args:
+        clusters (dict): A dictionary containing protein interaction clusters.
+        cluster_ids (list): List of cluster IDs.
+
+    Attributes:
+        clusters (dict): A dictionary containing protein interaction clusters.
+        cluster_ids (list): List of cluster IDs.
+    """
     def __init__(self, clusters, cluster_ids):
         self.clusters = clusters
         self.cluster_ids = cluster_ids
 
     def __len__(self):
+        """
+        Get the number of clusters in the dataset.
+        
+        Returns:
+            int: Number of clusters.
+        """
         return len(self.cluster_ids)
 
     def __getitem__(self, idx):
+        """
+        Get a pair of protein sequences from a cluster.
+        
+        Args:
+            idx (int): Index of the cluster.
+            
+        Returns:
+            tuple: A tuple containing two protein sequences (protein1_sequence, protein2_sequence).
+        """
         curr_cluster = self.clusters[self.cluster_ids[idx]]
         if curr_cluster:
             curr_pair = random.choice(curr_cluster)
             protein1_sequence = curr_pair[0]
             protein2_sequence = curr_pair[1]
             return protein1_sequence, protein2_sequence
-        # no sequences in cluster
+        # Return empty strings if no sequences in the cluster
         return '', ''
 
 def generate_datasets():
+    """
+    Generate train, validation, and test datasets for protein-protein interactions.
+    
+    Returns:
+        tuple: A tuple containing train, validation, and test datasets.
+    """
     protein1s, protein2s = _get_or_download_data()
     clusters = _cluster_data(protein1s, protein2s)
     cluster_ids = list(clusters.keys())
@@ -55,11 +86,21 @@ def generate_datasets():
     return train_dataset, val_dataset, test_dataset 
 
 def _get_or_download_data(max_sequence_length=2000):
+    """
+    Get or download protein sequence data.
+    
+    Args:
+        max_sequence_length (int, optional): Maximum sequence length for filtering sequences. Default is 2000.
+        
+    Returns:
+        tuple: A tuple containing two lists of protein sequences (protein1s, protein2s).
+    """
     data_dir = Path('data')
     protein1_file_path = data_dir / 'protein1.fasta'
     protein2_file_path = data_dir / 'protein2.fasta'
     data_dir.mkdir(parents=True, exist_ok=True)
 
+    # Check if protein sequence files exist, if not, download and process
     if not protein1_file_path.exists() or not protein2_file_path.exists():
         warnings.simplefilter('ignore', PDBConstructionWarning)
         query = AttributeQuery("rcsb_assembly_info.polymer_entity_instance_count_protein", "equals", 2,
@@ -120,6 +161,16 @@ def _get_or_download_data(max_sequence_length=2000):
     return protein1s, protein2s
 
 def _cluster_data(protein1s, protein2s):
+    """
+    Cluster protein data based on sequence similarity.
+    
+    Args:
+        protein1s (list): List of protein sequences (chain A).
+        protein2s (list): List of protein sequences (chain B).
+        
+    Returns:
+        dict: A dictionary containing protein interaction clusters.
+    """
     data_dir = Path('data')
     clustered_file_path = data_dir / 'protein2DB_clustered.tsv'
 
@@ -159,6 +210,12 @@ def _cluster_data(protein1s, protein2s):
     return clusters
 
 def _run_command(command):
+    """
+    Run a shell command.
+    
+    Args:
+        command (str): Shell command to be executed.
+    """
     print(f"Running command: {command}")
     try:
         result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=Path('data'))

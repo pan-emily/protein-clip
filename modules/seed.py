@@ -3,6 +3,15 @@ import random
 import numpy as np 
 
 def set_seed(seed_value=42):
+    """
+    Set the random seed for reproducibility in random, numpy, and PyTorch.
+
+    Args:
+        seed_value (int): Seed value for random number generators. Default is 42.
+
+    Returns:
+        int: The seed value used for setting the random seed.
+    """
     random.seed(seed_value)
     np.random.seed(seed_value)
     torch.manual_seed(seed_value)

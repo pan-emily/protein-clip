@@ -5,6 +5,19 @@ import numpy as np
 
 
 def train(model, data_loader, optimizer, tokenizer, device):
+    """
+    Train the model on the given data.
+
+    Args:
+        model: The model to be trained.
+        data_loader: DataLoader for the training data.
+        optimizer: Optimizer for updating model parameters.
+        tokenizer: Tokenizer for encoding peptides and receptors.
+        device: Device to place the data and model on.
+
+    Returns:
+        float: Average training loss.
+    """
     model.train()
     total_loss = 0
     for batch_data in data_loader:
@@ -15,6 +28,18 @@ def train(model, data_loader, optimizer, tokenizer, device):
     return total_loss / len(data_loader)
 
 def evaluate(model, data_loader, tokenizer, device):
+    """
+    Evaluate the model on the given data.
+
+    Args:
+        model: The model to be evaluated.
+        data_loader: DataLoader for the evaluation data.
+        tokenizer: Tokenizer for encoding peptides and receptors.
+        device: Device to place the data and model on.
+
+    Returns:
+        float: Average evaluation loss.
+    """
     model.eval()
     total_loss = 0
     with torch.no_grad():
@@ -24,6 +49,19 @@ def evaluate(model, data_loader, tokenizer, device):
     return total_loss / len(data_loader)
 
 def _process_batch(model, batch_data, tokenizer, device, compute_grad=False):
+    """
+    Process a batch of data using the model and compute the loss.
+
+    Args:
+        model: The model to be used for processing.
+        batch_data (tuple): A tuple of peptides and receptors for the batch.
+        tokenizer: Tokenizer for encoding peptides and receptors.
+        device: Device to place the data and model on.
+        compute_grad (bool): Whether to compute gradients. Default is False.
+
+    Returns:
+        float: Loss value for the batch.
+    """
     peptides, receptors = batch_data
     peptides = tokenizer(peptides, return_tensors='pt', padding=True).to(device)
     receptors = tokenizer(receptors, return_tensors='pt', padding=True).to(device)
@@ -34,6 +72,16 @@ def _process_batch(model, batch_data, tokenizer, device, compute_grad=False):
     return loss.item()
 
 def _contrastive_loss(pep_embedding, rec_embedding):
+    """
+    Compute the contrastive loss for peptide and receptor embeddings.
+
+    Args:
+        pep_embedding (torch.Tensor): Peptide embeddings.
+        rec_embedding (torch.Tensor): Receptor embeddings.
+
+    Returns:
+        torch.Tensor: Contrastive loss.
+    """
     logits = torch.mm(pep_embedding, rec_embedding)
     exp_logits = torch.exp(logits)
     L_r = -torch.mean(torch.log(torch.exp(torch.diag(logits)) / torch.sum(exp_logits, dim=1)))
@@ -42,6 +90,21 @@ def _contrastive_loss(pep_embedding, rec_embedding):
 
 
 def train_gc(model, data_loader, tokenizer, optimizer, scaler, device, accumulated_batches=1):
+    """
+    Train the model with gradient caching and accumulation.
+
+    Args:
+        model: The model to be trained.
+        data_loader: DataLoader for the training data.
+        tokenizer: Tokenizer for encoding peptides and receptors.
+        optimizer: Optimizer for updating model parameters.
+        scaler: Gradient scaler for mixed-precision training.
+        device: Device to place the data and model on.
+        accumulated_batches (int): Number of batches to accumulate gradients over.
+
+    Returns:
+        float: Average training loss.
+    """
     model.train()
     total_loss = 0
 
@@ -97,12 +160,38 @@ def train_gc(model, data_loader, tokenizer, optimizer, scaler, device, accumulat
 @cat_input_tensor
 @autocast()
 def get_logits(x, y):
+    """
+    Compute logits for given input tensors.
+
+    Args:
+        x: Input tensor x.
+        y: Input tensor y.
+
+    Returns:
+        torch.Tensor: Logits tensor.
+    """
     logits = torch.matmul(x, y.transpose(0, 1))
     exp_logits = torch.exp(logits)
     return exp_logits
 
 def eval_gc_allrec_onepep(model, data_loader, device, tokenizer, trained_model, 
                           val_loader, agg_batches=2, k = 0):
+    """
+    Evaluate the model with gradient caching for one peptide against all receptors.
+
+    Args:
+        model: The model to be evaluated.
+        data_loader: DataLoader for the evaluation data.
+        device: Device to place the data and model on.
+        tokenizer: Tokenizer for encoding peptides and receptors.
+        trained_model: Trained model for obtaining peptide embeddings.
+        val_loader: DataLoader for validation data.
+        agg_batches (int): Number of batches to aggregate for evaluation.
+        k (int): Index of the peptide for evaluation.
+
+    Returns:
+        list: List of counts of receptors with higher logits.
+    """
     model.eval()
 
     cache_x = []
@@ -144,24 +233,36 @@ def eval_gc_allrec_onepep(model, data_loader, device, tokenizer, trained_model,
 
             return big_batches
 
-            onerec = None
-            inc = 0
-            for step, sub_batch in enumerate(data_loader):
-                xx, yy = sub_batch
-                if k//len(xx) == inc:
-                    onerec = xx[k % len(sub_batch[1])]
-                inc += 1
-
         
 
 @cached
 @autocast()
 def _call_model_gc(model, input):
+    """
+    Cache and apply the model with gradient caching.
+
+    Args:
+        model: The model to be called.
+        input: Input data to be processed by the model.
+
+    Returns:
+        tuple: A tuple containing model output and closure function.
+    """
     return model(input)
 
 @cat_input_tensor
 @autocast()
 def _contrastive_loss_gc(x, y):
+    """
+    Compute the contrastive loss for gradient-cached embeddings.
+
+    Args:
+        x: Cached embeddings for the first modality.
+        y: Cached embeddings for the second modality.
+
+    Returns:
+        torch.Tensor: Contrastive loss.
+    """
     logits = torch.matmul(x, y.transpose(0, 1))
     exp_logits = torch.exp(logits)
     L_r = -torch.mean(torch.log(torch.exp(torch.diag(logits)) / torch.sum(exp_logits, dim=1)))

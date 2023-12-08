@@ -7,14 +7,40 @@ from torch.utils.data import Dataset
 
 
 class PeptideReceptorDataset(Dataset):
+    """
+    Custom PyTorch Dataset class for peptide-receptor interactions.
+    
+    Args:
+        clusters (dict): A dictionary containing peptide-receptor interaction clusters.
+        cluster_ids (list): List of cluster IDs.
+
+    Attributes:
+        clusters (dict): A dictionary containing peptide-receptor interaction clusters.
+        cluster_ids (list): List of cluster IDs.
+    """
     def __init__(self, clusters, cluster_ids):
         self.clusters = clusters
         self.cluster_ids = cluster_ids
 
     def __len__(self):
+        """
+        Get the number of clusters in the dataset.
+        
+        Returns:
+            int: Number of clusters.
+        """
         return len(self.cluster_ids)
 
     def __getitem__(self, idx):
+        """
+        Get a pair of peptide and receptor sequences from a cluster.
+        
+        Args:
+            idx (int): Index of the cluster.
+            
+        Returns:
+            tuple: A tuple containing two sequences (peptide_sequence, receptor_sequence).
+        """
         curr_cluster = self.clusters[self.cluster_ids[idx]]
         curr_pair = random.choice(curr_cluster)
         peptide_sequence = curr_pair[0]
@@ -22,6 +48,12 @@ class PeptideReceptorDataset(Dataset):
         return peptide_sequence, receptor_sequence
 
 def generate_datasets():
+    """
+    Generate train, validation, and test datasets for peptide-receptor interactions.
+    
+    Returns:
+        tuple: A tuple containing train, validation, and test datasets.
+    """
     peptides, receptors = _get_or_download_data()
     clusters = _cluster_data(peptides, receptors)
     cluster_ids = list(clusters.keys())
@@ -41,6 +73,12 @@ def generate_datasets():
     return train_dataset, val_dataset, test_dataset 
 
 def _get_or_download_data():
+    """
+    Get or download peptide and receptor sequence data.
+    
+    Returns:
+        tuple: A tuple containing two lists of sequences (peptides, receptors).
+    """
     data_dir = Path('data')
     peptide_file_path = data_dir / 'peptide.fasta'
     receptor_file_path = data_dir / 'receptor.fasta'
@@ -72,6 +110,16 @@ def _get_or_download_data():
     return peptides, receptors
 
 def _cluster_data(peptides, receptors):
+    """
+    Cluster peptide-receptor interaction data based on sequence similarity.
+    
+    Args:
+        peptides (list): List of peptide sequences.
+        receptors (list): List of receptor sequences.
+        
+    Returns:
+        dict: A dictionary containing peptide-receptor interaction clusters.
+    """
     data_dir = Path('data')
     clustered_file_path = data_dir / 'receptorDB_clustered.tsv'
 
@@ -104,6 +152,12 @@ def _cluster_data(peptides, receptors):
     return clusters
 
 def _run_command(command):
+    """
+    Run a shell command.
+    
+    Args:
+        command (str): Shell command to be executed.
+    """
     print(f"Running command: {command}")
     try:
         result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=Path('data'))

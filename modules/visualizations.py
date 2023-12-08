@@ -5,6 +5,20 @@ import pandas as pd
 from Bio import SeqIO
 
 def plot_embedding_cosine_similarities(base_path, title, data_loader, tokenizer, model, device):
+    """
+    Plot the cosine similarities of peptide and receptor embeddings.
+
+    Args:
+        base_path (str): Base directory path for saving the plot.
+        title (str): Title for the plot.
+        data_loader (DataLoader): DataLoader for the data.
+        tokenizer (Tokenizer): Tokenizer for encoding peptides and receptors.
+        model (nn.Module): Model for computing embeddings.
+        device (str): Device for processing data and model.
+
+    Returns:
+        None
+    """
     curr_peptides, curr_receptors = next(iter(data_loader))
     curr_peptides = tokenizer(curr_peptides, return_tensors='pt', padding=True).to(device)
     curr_receptors = tokenizer(curr_receptors, return_tensors='pt', padding=True).to(device)
@@ -22,11 +36,33 @@ def plot_embedding_cosine_similarities(base_path, title, data_loader, tokenizer,
     print(f"{title} plot saved to {plot_path}")
 
 def _compute_embedding_cosine_similarities(model, peptides, receptors):
+    """
+    Compute cosine similarities of peptide and receptor embeddings.
+
+    Args:
+        model (nn.Module): Model for computing embeddings.
+        peptides (Tensor): Tensor of peptide data.
+        receptors (Tensor): Tensor of receptor data.
+
+    Returns:
+        Tensor: Cosine similarity matrix.
+    """
     peptides_embedding, receptors_embedding = model(peptides, receptors)
     similarity_matrix = torch.mm(peptides_embedding, receptors_embedding.t())
     return similarity_matrix * torch.exp(-model.temperature)
 
 def _compute_embedding_cosine_similarities_filip(model, peptides, receptors):
+    """
+    Compute cosine similarities of peptide and receptor embeddings for the FILIP model.
+
+    Args:
+        model (nn.Module): FILIP model for computing embeddings.
+        peptides (Tensor): Tensor of peptide data.
+        receptors (Tensor): Tensor of receptor data.
+
+    Returns:
+        Tensor: Cosine similarity matrix.
+    """
     sim_scores_A, sim_scores_B = model(peptides, receptors)
 
     print(sim_scores_A)
@@ -38,6 +74,20 @@ def _compute_embedding_cosine_similarities_filip(model, peptides, receptors):
 
 
 def plot_embedding_cosine_similarities_filip(base_path, title, data_loader, tokenizer, model, device):
+    """
+    Plot the cosine similarities of peptide and receptor embeddings for the FILIP model.
+
+    Args:
+        base_path (str): Base directory path for saving the plot.
+        title (str): Title for the plot.
+        data_loader (DataLoader): DataLoader for the data.
+        tokenizer (Tokenizer): Tokenizer for encoding peptides and receptors.
+        model (nn.Module): FILIP model for computing embeddings.
+        device (str): Device for processing data and model.
+
+    Returns:
+        None
+    """
     curr_peptides, curr_receptors = next(iter(data_loader))
     curr_peptides = tokenizer(curr_peptides, return_tensors='pt', padding=True).to(device)
     curr_receptors = tokenizer(curr_receptors, return_tensors='pt', padding=True).to(device)
@@ -56,6 +106,19 @@ def plot_embedding_cosine_similarities_filip(base_path, title, data_loader, toke
 
 
 def plot_loss_curves(base_path, train_losses, val_losses, train_batch_size, val_batch_size):
+    """
+    Plot training and validation loss curves.
+
+    Args:
+        base_path (str): Base directory path for saving the plot.
+        train_losses (list): List of training losses.
+        val_losses (list): List of validation losses.
+        train_batch_size (int): Batch size used for training.
+        val_batch_size (int): Batch size used for validation.
+
+    Returns:
+        None
+    """
     title = 'Training and Validation Loss Relative to Random'
     plt.plot([i/-torch.tensor(1/train_batch_size).log().item() for i in train_losses], label='Train Loss')
     plt.plot([i/-torch.tensor(1/val_batch_size).log().item() for i in val_losses], label='Validation Loss')
@@ -67,6 +130,17 @@ def plot_loss_curves(base_path, train_losses, val_losses, train_batch_size, val_
     print(f"{title} plot saved to {plot_path}")
 
 def plot_clustering(base_path, data_path, prefix='protein2'):
+    """
+    Plot clustering distribution for protein-protein sequences.
+
+    Args:
+        base_path (str): Base directory path for saving the plot.
+        data_path (str): Path to the clustering data.
+        prefix (str): Prefix for the data file.
+
+    Returns:
+        None
+    """
     data=pd.read_csv(str(f'{data_path}/{prefix}DB_clustered.tsv'),sep='\t', header=None)
     clusters_id = set(data[0])
     ct = []
@@ -84,6 +158,18 @@ def plot_clustering(base_path, data_path, prefix='protein2'):
     print(f"{title} plot saved to {plot_path}")
 
 def plot_protein_lengths(base_path, data_dir, prefix1='protein1', prefix2='protein2'):
+    """
+    Plot the distribution of protein sequence lengths in the dataset.
+
+    Args:
+        base_path (str): Base directory path for saving the plot.
+        data_dir (str): Directory containing protein sequence data.
+        prefix1 (str): Prefix for protein sequence file 1.
+        prefix2 (str): Prefix for protein sequence file 2.
+
+    Returns:
+        None
+    """
     protein_lengths = []
 
     seq1s_parsed = list(SeqIO.parse(data_dir / f'{prefix1}.fasta', 'fasta'))
@@ -103,6 +189,16 @@ def plot_protein_lengths(base_path, data_dir, prefix1='protein1', prefix2='prote
         
 
 def _save_plot(base_path, fig_num=[1]):
+    """
+    Save the current plot.
+
+    Args:
+        base_path (str): Base directory path for saving the plot.
+        fig_num (list): List to keep track of the figure number.
+
+    Returns:
+        str: Path to the saved plot.
+    """
     folder_path = os.path.join(base_path, "figures")
     os.makedirs(folder_path, exist_ok=True)
     filename = f"figure {fig_num[0]}.png"

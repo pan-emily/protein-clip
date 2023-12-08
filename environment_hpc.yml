@@ -29,7 +29,7 @@ dependencies:
   - bzip2=1.0.8
   - c-ares=1.19.1
   - ca-certificates=2023.08.22
-  - certifi=2023.7.22
+  - certifi=2023.11.17
   - cffi=1.15.1
   - charset-normalizer=2.0.4
   - contourpy=1.0.5
@@ -46,6 +46,7 @@ dependencies:
   - datasets=2.12.0
   - dbus=1.13.18
   - dill=0.3.6
+  - einops=0.7.0
   - expat=2.5.0
   - ffmpeg=4.3
   - filelock=3.9.0
@@ -215,4 +216,5 @@ dependencies:
   - zstd=1.5.5
   - pip:
       - gradcache==0.0.1
+      - rcsbsearchapi==1.4.2
 prefix: /groups/mlprojects/protein-clip-pjt/miniconda3/envs/protein-clip

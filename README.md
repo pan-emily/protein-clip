@@ -105,7 +105,7 @@ Most visualizations can be found directly in the module ```visualizations.py```.
 Refer to the method ```plot_embedding_cosine_similarities``` in the ```visualizations``` module. 
 
 ### Top-k Accuracy 
-Generate top-k accuracies by running ```topk.py``` or ```run-topk.sh```. This will train the CLIP Model on a batch size of ```256``` and plot the top-k validation accuracy for each pair. 
+Generate top-k accuracies by running ```topk.py``` or ```run-topk.sh``` and make sure to modify the ```model_save_path``` to wherever the model you want to test is, currently it is set to one of our models on Caltech HPC that uses protein-protein data (as opposed to peptide-receptor data). This will train the CLIP Model on a batch size of ```256``` and plot the top-k validation accuracy for each pair. 
 
 ### Principal Component Analysis 
 

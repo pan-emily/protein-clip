@@ -23,8 +23,8 @@ dependencies:
   - brotli-python=1.0.9=py310hc377ac9_7
   - bzip2=1.0.8=h620ffc9_4
   - c-ares=1.19.1=h80987f9_0
-  - ca-certificates=2023.7.22=hf0a4a13_0
-  - certifi=2023.7.22=pyhd8ed1ab_0
+  - ca-certificates=2023.11.17=hf0a4a13_0
+  - certifi=2023.11.17=pyhd8ed1ab_0
   - cffi=1.15.1=py310h80987f9_3
   - charset-normalizer=2.0.4=pyhd3eb1b0_0
   - contourpy=1.0.5=py310h525c30c_0
@@ -32,6 +32,7 @@ dependencies:
   - cycler=0.11.0=pyhd3eb1b0_0
   - datasets=2.12.0=py310hca03da5_0
   - dill=0.3.6=py310hca03da5_0
+  - einops=0.7.0=pyhd8ed1ab_1
   - ffmpeg=4.2.2=h04105a8_0
   - filelock=3.9.0=py310hca03da5_0
   - fonttools=4.25.0=pyhd3eb1b0_0
@@ -107,7 +108,7 @@ dependencies:
   - numpy-base=1.26.0=py310ha9811e2_0
   - openh264=1.8.0=h98b2900_0
   - openjpeg=2.3.0=h7a6adac_2
-  - openssl=3.1.4=h0d3ecfb_0
+  - openssl=3.2.0=h0d3ecfb_1
   - orc=1.7.4=hdca1487_1
   - packaging=23.1=py310hca03da5_0
   - pandas=2.1.1=py310h46d7db6_0

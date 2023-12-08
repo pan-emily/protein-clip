@@ -12,31 +12,31 @@ This study delves into the innovative application of advanced machine learning m
 
 #### TL;DR: 
 
-Running ```main.py``` extracts proten-receptor data from Propedia, then builds + trains a CLIP model. 
+Running ```main.py``` extracts protein-receptor data from Propedia, then builds + trains a CLIP model. 
 
-Model versioning is based on time of run, so model/losses will be saved to directory determined by H-M-S we begin training the model. 
+Model versioning is based on the time of the run. Therefore, the model and losses will be saved to a directory determined by the year, month, day, hour, minute, and second when training begins.
 
 
 ## Environment Setup
 
-### If running locally:
+### If you are running locally:
 
 Create a new Anaconda environment from ```environment.yml``` using the command
     > ```conda env create -f environment.yml```
 
-Running scripts should simply require you to run the specified file using the anaconda version of python3. 
+To run the scripts, simply execute the specified file using Python 3 from the Anaconda distribution.
 
-### If running on HPC: 
+### If you are running on HPC: 
 
 Create a new Anaconda environment from ```environment_hpc.yml``` using the command
     > ```conda env create -f environment_hpc.yml```
 
 To run the scripts, follow the documentation for your specific computing cluster. 
 
-To give some examples for Caltech HPC, refer to the corresponding file in ```hpc_bash_scripts``` folder. 
+For examples specific to Caltech HPC, please refer to the corresponding files in the ```hpc_bash_scripts``` folder
 
 ## Default Parameters
-We have done a degree of hyperparameter tuning, with the current model at the following parameters. You are welcome to iterate on our work! 
+We have done a degree of hyperparameter tuning and arrived at the current model with the following parameters. You are welcome to iterate on our work! 
 
 - ```mmseqs2 min-seq-id = 0.5```
 - ESM Tokenizer: ```facebook/esm2_t30_150M_UR50D```
@@ -47,11 +47,11 @@ We have done a degree of hyperparameter tuning, with the current model at the fo
 
 ## Peptide-Receptor CLIP
 
-The peptide-receptor CLIP model should be ran using the script ```main.py```. The shell file corresponding for HPC usage is ```run-main.sh```. 
+The peptide-receptor CLIP model should be run using the script ```main.py```. The shell file corresponding for HPC usage is ```run-main.sh```. 
 
 Running this script will pull the 19.814 peptide-receptor pair dataset from [Propedia](http://bioinfo.dcc.ufmg.br/propedia/). The dataset will be clustered using the [mmseqs2](https://github.com/soedinglab/MMseqs2) library. 
 
-The dataset will automatically be processed and divided into a 70\% / 15\% / 15\% train / test / validate split. 
+The dataset will be automatically processed and divided into a 70\% training, 15\% testing, and 15\% validation split.
 
 For each epoch, the losses are recorded, which should save to a timestamp-labeled folder. Additionally, the cosine similarity matrix for each epoch will be saved. 
 
@@ -61,11 +61,11 @@ For each epoch, the losses are recorded, which should save to a timestamp-labele
 
 ## Protein-Protein CLIP 
 
-The protein-protein CLIP model should be ran using the script ```main_2protein.py```. The shell file corresponding for HPC usage is ```run-main_2protein.sh```. 
+The protein-protein CLIP model should be run using the script ```main_2protein.py```. The shell file corresponding for HPC usage is ```run-main_2protein.sh```. 
 
-Running this script will scrape [Protein Data Bank](https://www.rcsb.org/) for all 2-protein interactions. The dataset will be clustered using the [mmseqs2](https://github.com/soedinglab/MMseqs2) library. 
+Running this script will scrape the [Protein Data Bank](https://www.rcsb.org/) for all 2-protein interactions. The dataset will be clustered using the [mmseqs2](https://github.com/soedinglab/MMseqs2) library. 
 
-The dataset will automatically be processed and divided into a 70\% / 15\% / 15\% train / test / validate split. 
+The dataset will automatically be processed and divided into a 70\% / 15\% / 15\% train / test / validation split. 
 
 For each epoch, the losses are recorded, which should save to a timestamp-labeled folder. Additionally, the cosine similarity matrix for each epoch will be saved. 
 
@@ -76,11 +76,11 @@ For each epoch, the losses are recorded, which should save to a timestamp-labele
 
 ![filip-schema](fig/filip-schema.png)
 
-The peptide-receptor FILIP model should be ran using the script ```main_2protein_filip.py```. The shell file corresponding for HPC usage is ```run-main_filip.sh```. The dataset will be clustered using the [mmseqs2](https://github.com/soedinglab/MMseqs2) library. 
+The peptide-receptor FILIP model should be run using the script ```main_2protein_filip.py```. The shell file corresponding for HPC usage is ```run-main_filip.sh```. The dataset will be clustered using the [mmseqs2](https://github.com/soedinglab/MMseqs2) library. 
 
-Running this script will pull the 19.814 peptide-receptor pair dataset from [Propedia](http://bioinfo.dcc.ufmg.br/propedia/). 
+Running this script will pull the 19,814 peptide-receptor pair dataset from [Propedia](http://bioinfo.dcc.ufmg.br/propedia/). 
 
-The dataset will automatically be processed and divided into a 70\% / 15\% / 15\% train / test / validate split. 
+The dataset will automatically be processed and divided into a 70\% / 15\% / 15\% train / test / validation split. 
 
 For each epoch, the losses are recorded, which should save to a timestamp-labeled folder. Additionally, the cosine similarity matrix for each epoch will be saved. 
 
@@ -109,7 +109,7 @@ Generate top-k accuracies by running ```topk.py``` or ```run-topk.sh```. This wi
 
 ### Principal Component Analysis 
 
-Principal component analysis modularization is to come. Currently, we have an ad-hoc solution that can be referenced in ```notebooks/batchwise_pca```. This will generate a 2-D Principal Component Analysis and plot the points on a a 2d plane. 
+Principal component analysis modularization is to come. Currently, we have an ad-hoc solution that can be referenced in ```notebooks/batchwise_pca```. This will generate a 2-D Principal Component Analysis and plot the points on a 2d plane. 
 
 <img src="fig/2d_pca_colorized.png" height="200">
 <img src="fig/pca_embed.png" height="200">

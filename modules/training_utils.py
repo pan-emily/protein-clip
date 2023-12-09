@@ -152,9 +152,6 @@ def train_gc(model, data_loader, tokenizer, optimizer, scaler, device, accumulat
             scaler.update()
             optimizer.zero_grad()
 
-        # if (step + 1) == accumulated_batches * 10:
-        #     break
-
     return total_loss / big_batches
 
 @cat_input_tensor
@@ -174,8 +171,7 @@ def get_logits(x, y):
     exp_logits = torch.exp(logits)
     return exp_logits
 
-def eval_gc_allrec_onepep(model, data_loader, device, tokenizer, trained_model, 
-                          val_loader, agg_batches=2, k = 0):
+def eval_gc_allrec_onepep(model, data_loader, device, tokenizer, agg_batches=2, k = 0):
     """
     Evaluate the model with gradient caching for one peptide against all receptors.
 
@@ -184,8 +180,6 @@ def eval_gc_allrec_onepep(model, data_loader, device, tokenizer, trained_model,
         data_loader: DataLoader for the evaluation data.
         device: Device to place the data and model on.
         tokenizer: Tokenizer for encoding peptides and receptors.
-        trained_model: Trained model for obtaining peptide embeddings.
-        val_loader: DataLoader for validation data.
         agg_batches (int): Number of batches to aggregate for evaluation.
         k (int): Index of the peptide for evaluation.
 

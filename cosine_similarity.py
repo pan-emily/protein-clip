@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from torch.cuda.amp import GradScaler
 from transformers import EsmModel, EsmTokenizer
 
-from modules import seed, models, data_utils_2protein, visualizations, training_utils
+from modules import seed, models, data_utils, data_utils_2protein, visualizations
 from pathlib import Path
 
 def main():
@@ -40,8 +40,8 @@ def main():
     data_dir = Path('data')
     visualizations.plot_clustering(base_path, data_dir, prefix='protein2')
     visualizations.plot_protein_lengths(base_path, data_dir)
-
     visualizations.plot_embedding_cosine_similarities(base_path, "Raw Embedding Cosine Similarities", train_loader, tokenizer, trained_model, device)
+    
     model_save_path = f'/groups/mlprojects/protein-clip-pjt/protein-clip/runs/20231130_163836_134376/best_model.pth'
 
     # analyzing performance after training

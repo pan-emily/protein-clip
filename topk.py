@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from torch.cuda.amp import GradScaler
 from transformers import EsmModel, EsmTokenizer
 
-from modules import seed, models, data_utils_2protein, visualizations, training_utils
+from modules import seed, models, data_utils, data_utils_2protein, visualizations, training_utils
 import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
@@ -51,8 +51,7 @@ def main():
     best_trained_model.load_state_dict(torch.load(model_save_path))
     perf = []
     for i in range(256):
-        curr_perf = np.mean(training_utils.eval_gc_allrec_onepep(best_trained_model, val_loader, device, tokenizer, trained_model, 
-                          val_loader, agg_batches=16, k = i))
+        curr_perf = np.mean(training_utils.eval_gc_allrec_onepep(best_trained_model, val_loader, device, tokenizer, agg_batches=16, k = i))
         perf.append(curr_perf)
         print(curr_perf)
         

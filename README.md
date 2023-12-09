@@ -1,4 +1,4 @@
-# CLIP Model for Peptide-Receptor Interactions
+# Contrastive Learning for Protein Binding
 CS 101 Project 
 Contributors: Ayush Varshney, Emily Pan, Evan Zhang, Jadelynn Dao
 
@@ -104,10 +104,16 @@ Experimentation with the masked language model was largely ad-hoc. See ```notebo
 Most visualizations can be found directly in the module ```visualizations.py```. 
 
 ### Cosine Similarity Matrix 
-Refer to the method ```plot_embedding_cosine_similarities``` in the ```visualizations``` module. 
+
+Generate joint embedding cosine similarities by running ```cosine_similarity.py``` or ```run-cosine_similarity.sh```. This will display the model's ability to align embeddings for binding proteins (shown on the diagonal) and disperse embeddings for non-binding proteins (shown on the off-diagonals) in a batch of ```16``` pairs.
+
+Make sure to modify the ```model_save_path``` to wherever the model you want to test is, currently it is set to one of our models on Caltech HPC that uses protein-protein data. Replace ```data_utils_2protein.generate_datasets()``` with ```data_utils.generate_datasets()``` if you wish to test a model trained on peptide-receptor data instead.
 
 ### Top-k Accuracy 
-Generate top-k accuracies by running ```topk.py``` or ```run-topk.sh``` and make sure to modify the ```model_save_path``` to wherever the model you want to test is, currently it is set to one of our models on Caltech HPC that uses protein-protein data (as opposed to peptide-receptor data). This will train the CLIP Model on a batch size of ```256``` and plot the top-k validation accuracy for each pair. 
+
+Generate top-k accuracies by running ```topk.py``` or ```run-topk.sh```. This will test the model on predicting the correct binding partner for a protein out of a batch of ```256``` candidates ranked by joint embedding cosine similarity for each protein in the batch.
+
+Again, make sure to modify the ```model_save_path``` to wherever the model you want to test is, currently it is set to one of our models on Caltech HPC that uses protein-protein data. Replace ```data_utils_2protein.generate_datasets()``` with ```data_utils.generate_datasets()``` if you wish to test a model trained on peptide-receptor data instead.
 
 ### Principal Component Analysis 
 

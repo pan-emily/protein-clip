@@ -215,6 +215,6 @@ dependencies:
   - zlib=1.2.13
   - zstd=1.5.5
   - pip:
-      - gradcache==0.0.1
+      - git+https://github.com/luyug/GradCache.git@main
       - rcsbsearchapi==1.4.2
 prefix: /groups/mlprojects/protein-clip-pjt/miniconda3/envs/protein-clip

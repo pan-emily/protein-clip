@@ -1,5 +1,6 @@
 name: protein-clip
 channels:
+  - bioconda
   - pytorch
   - conda-forge
   - defaults
@@ -24,7 +25,7 @@ dependencies:
   - bzip2=1.0.8=h620ffc9_4
   - c-ares=1.19.1=h80987f9_0
   - ca-certificates=2023.11.17=hf0a4a13_0
-  - certifi=2023.11.17=pyhd8ed1ab_0
+  - certifi=2023.11.17=py310hca03da5_0
   - cffi=1.15.1=py310h80987f9_3
   - charset-normalizer=2.0.4=pyhd3eb1b0_0
   - contourpy=1.0.5=py310h525c30c_0
@@ -54,6 +55,8 @@ dependencies:
   - importlib-metadata=6.0.0=py310hca03da5_0
   - jinja2=3.1.2=py310hca03da5_0
   - jpeg=9e=h80987f9_1
+  - jsonschema=4.19.2=py310hca03da5_0
+  - jsonschema-specifications=2023.7.1=py310hca03da5_0
   - kiwisolver=1.4.4=py310h313beb8_0
   - krb5=1.20.1=hf3e1bf2_1
   - lame=3.100=h1a28f6b_0
@@ -126,11 +129,14 @@ dependencies:
   - pytorch=2.1.0=py3.10_0
   - pytz=2023.3.post1=py310hca03da5_0
   - pyyaml=6.0.1=py310h80987f9_0
+  - rcsbsearch=0.2.3=pyhdfd78af_0
   - re2=2022.04.01=hc377ac9_0
   - readline=8.2=h1a28f6b_0
+  - referencing=0.30.2=py310hca03da5_0
   - regex=2023.10.3=py310h80987f9_0
   - requests=2.31.0=py310hca03da5_0
   - responses=0.13.3=pyhd3eb1b0_0
+  - rpds-py=0.10.6=py310hf0e4da2_0
   - safetensors=0.4.0=py310h482802a_0
   - setuptools=68.0.0=py310hca03da5_0
   - six=1.16.0=pyhd3eb1b0_1
@@ -160,3 +166,4 @@ dependencies:
   - zstd=1.5.5=hd90d995_0
   - pip:
       - git+https://github.com/luyug/GradCache.git@main
+      - rcsbsearchapi==1.4.2

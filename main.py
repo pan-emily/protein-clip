@@ -80,6 +80,9 @@ def main():
                 best_model_state = trained_model.state_dict()
                 torch.save(best_model_state, model_save_path)
 
+            visualizations.plot_embedding_cosine_similarities(base_path, f"Trained Embedding Cosine Similarities on Train Set - Epoch {epoch + 1}", train_loader, tokenizer, best_trained_model, device)    
+            visualizations.plot_embedding_cosine_similarities(base_path, f"Trained Embedding Cosine Similarities on Val Set - Epoch {epoch + 1}", val_loader, tokenizer, best_trained_model, device)
+
             torch.cuda.empty_cache()
             print(f"Epoch {epoch + 1}/{num_epochs} - Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
 

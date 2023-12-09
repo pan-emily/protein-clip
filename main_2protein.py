@@ -84,8 +84,8 @@ def main():
                 best_trained_model = models.ExtendedCLIP(input_dim, embedding_dim, h1, h2, dropout, esm_model).to(device)
                 best_trained_model.load_state_dict(torch.load(model_save_path))
 
-                visualizations.plot_embedding_cosine_similarities(base_path, f"Trained Embedding Cosine Similarities on Train Set - Epoch {epoch + 1}", train_loader, tokenizer, best_trained_model, device)    
-                visualizations.plot_embedding_cosine_similarities(base_path, f"Trained Embedding Cosine Similarities on Val Set - Epoch {epoch + 1}", val_loader, tokenizer, best_trained_model, device)
+            visualizations.plot_embedding_cosine_similarities(base_path, f"Trained Embedding Cosine Similarities on Train Set - Epoch {epoch + 1}", train_loader, tokenizer, best_trained_model, device)    
+            visualizations.plot_embedding_cosine_similarities(base_path, f"Trained Embedding Cosine Similarities on Val Set - Epoch {epoch + 1}", val_loader, tokenizer, best_trained_model, device)
 
 
             torch.cuda.empty_cache()

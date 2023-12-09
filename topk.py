@@ -39,11 +39,6 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
 
-    data_dir = Path('data')
-    visualizations.plot_clustering(base_path, data_dir, prefix='protein2')
-    visualizations.plot_protein_lengths(base_path, data_dir)
-    visualizations.plot_embedding_cosine_similarities(base_path, "Raw Embedding Cosine Similarities", train_loader, tokenizer, trained_model, device)
-   
     model_save_path = '/groups/mlprojects/protein-clip-pjt/protein-clip/runs/20231201_190729_089146/best_model.pth'
     
     # analyzing performance after training
@@ -55,22 +50,20 @@ def main():
         perf.append(curr_perf)
         print(curr_perf)
         
-
+    # calculating top-k accuracies for trained model
     top_k = [0]*256
     for i in perf:
         top_k[int(i)] += 1
-
     for i in range(1, 256):
         top_k[i] += top_k[i-1]
-
     accs = []
     for i in range(256):
         accs.append(top_k[i]/256)
 
+    # calculating top-k accuracies for random baseline
     numbers = np.arange(256)
     np.random.shuffle(numbers)
     perf2 = numbers.tolist()
-
     top_k2 = [0]*256
     for i in perf2:
         top_k2[int(i)] += 1

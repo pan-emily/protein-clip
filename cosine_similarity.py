@@ -36,13 +36,9 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
-
-    data_dir = Path('data')
-    visualizations.plot_clustering(base_path, data_dir, prefix='protein2')
-    visualizations.plot_protein_lengths(base_path, data_dir)
     visualizations.plot_embedding_cosine_similarities(base_path, "Raw Embedding Cosine Similarities", train_loader, tokenizer, trained_model, device)
     
-    model_save_path = f'/groups/mlprojects/protein-clip-pjt/protein-clip/runs/20231130_163836_134376/best_model.pth'
+    model_save_path = '/groups/mlprojects/protein-clip-pjt/protein-clip/runs/20231130_163836_134376/best_model.pth'
 
     # analyzing performance after training
     best_trained_model = models.ExtendedCLIP(input_dim, embedding_dim, h1, h2, dropout, esm_model).to(device)

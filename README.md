@@ -12,9 +12,13 @@ This study delves into the innovative application of advanced machine learning f
 
 #### TL;DR: 
 
-Running ```main.py``` extracts protein-receptor data from Propedia, then builds + trains a CLIP model. 
+Running ```main.py``` extracts peptide-receptor data from Propedia and trains a CLIP model. 
 
-Model versioning is based on the time of the run. Therefore, the model and losses will be saved to a directory determined by the year, month, day, hour, minute, and second when training begins.
+Running ```main_2protein.py``` extracts protein-protein data from PDB and trains a CLIP model. 
+
+Running ```main_2protein_filip.py``` extracts protein-protein data from PDB and trains a FILIP model. 
+
+Model versioning is based on the time of the run, so the model and losses will be saved to a directory determined by the year, month, day, hour, minute, and second training begins.
 
 
 ## Environment Setup
@@ -117,7 +121,7 @@ Again, make sure to modify the ```model_save_path``` to wherever the model you w
 
 ### Principal Component Analysis 
 
-Principal component analysis modularization is to come. Currently, we have an ad-hoc solution that can be referenced in ```notebooks/batchwise_pca```. This will generate a 2-D Principal Component Analysis and plot the points on a 2d plane. 
+Although PCA is not availible in our visualizations module, it can be referenced in ```notebooks/batchwise_pca```. This will generate a 2-D Principal Component Analysis and plot the points on a 2d plane. 
 
 <img src="fig/2d_pca_colorized.png" height="200">
 <img src="fig/pca_embed.png" height="200">

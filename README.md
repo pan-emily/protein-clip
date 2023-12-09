@@ -24,6 +24,8 @@ Model versioning is based on the time of the run. Therefore, the model and losse
 Create a new Anaconda environment from ```environment.yml``` using the command
     > ```conda env create -f environment.yml```
 
+By default, Anaconda will install a CPU-only version of PyTorch. If you have access to a GPU, please [install](https://pytorch.org/get-started/locally/) the correct version of PyTorch for you.
+
 To run the scripts, simply execute the specified file using Python 3 from the Anaconda distribution.
 
 ### If you are running on HPC: 

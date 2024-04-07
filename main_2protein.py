@@ -31,7 +31,7 @@ def main():
     trained_model = models.ExtendedCLIP(input_dim, embedding_dim, h1, h2, dropout, esm_model).to(device)
 
     # set dataloader hyperparameters
-    batch_size = 16
+    batch_size = 8
     train_dataset, val_dataset, test_dataset = data_utils_2protein.generate_datasets()
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=True)

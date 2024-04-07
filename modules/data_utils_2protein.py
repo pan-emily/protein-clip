@@ -126,11 +126,11 @@ def generate_datasets():
     
     return train_dataset, val_dataset, test_dataset 
 
-def _get_or_download_data(max_sequence_length=2000, threshold=1.25):
+def _get_or_download_data(max_sequence_length=2000, threshold=1.2):
     """
     Download pdbs and extract the binding sites. 
     """
-    data_dir = Path('pdb')
+    data_dir = Path('data')
     protein1_file_path = data_dir / 'protein1.fasta'
     protein2_file_path = data_dir / 'protein2.fasta'
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -155,7 +155,7 @@ def _get_or_download_data(max_sequence_length=2000, threshold=1.25):
         sequences_1 = {}
         sequences_2 = {}
 
-        pdb_ids = pdb_ids[:100]
+        # pdb_ids = pdb_ids[:100]
 
         for pdb_id in pdb_ids:
             pdb_files_path = data_dir / 'pdb_files'
@@ -189,9 +189,10 @@ def _get_or_download_data(max_sequence_length=2000, threshold=1.25):
                     protein1 = "".join([meta[i][2] for i in range(len(coords)) if (meta[i][0] == protein_chains[0]) and (meta[i][2] in standard_aa_codes) and (labels[i])])
                     protein2 = "".join([meta[i][2] for i in range(len(coords)) if (meta[i][0] == protein_chains[1]) and (meta[i][2] in standard_aa_codes) and (labels[i])])
 
-                if protein1 and protein2:
+                if protein1 and protein2 and len(protein1) <= max_sequence_length and len(protein2) <= max_sequence_length:
                     sequences_1[pdb_id] = protein1
                     sequences_2[pdb_id] = protein2
+                
 
 
         # Write sequences of first chain to a single FASTA file

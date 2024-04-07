@@ -56,6 +56,7 @@ dependencies:
   - frozenlist=1.4.0
   - fsspec=2023.9.2
   - gawk=5.1.0
+  - gemmi=0.6.5
   - gettext=0.21.1
   - gflags=2.2.2
   - giflib=5.2.1
@@ -184,6 +185,7 @@ dependencies:
   - requests=2.31.0
   - responses=0.13.3
   - safetensors=0.4.0
+  - scipy=1.13.0
   - setuptools=68.0.0
   - sip=6.7.12
   - six=1.16.0

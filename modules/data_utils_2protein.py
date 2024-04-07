@@ -46,15 +46,14 @@ def is_protein(chain: gemmi.Chain) -> bool:
         res.name in standard_aa_codes for res in chain.get_polymer()
     )
 
-def model_to_index_list(model: gemmi.Model):
+def chain_to_index_list(chain: gemmi.Chain):
     coords = []
     meta = []
-    for chain in model:
-        for residue in chain:
-            for atom in residue:
-                coords.append(list(atom.pos))
-                meta.append((chain.name, residue.seqid.num, residue.name, atom.element.name, atom.name))
-    assert len(coords) == sum(len(res) for chain in model for res in chain)
+    for residue in chain:
+        for atom in residue:
+            coords.append(list(atom.pos))
+            meta.append((chain.name, residue.seqid.num, residue.name, atom.element.name, atom.name))
+    assert len(coords) == sum(len(res) for res in chain)
     return coords, meta
 
 class ProteinProteinDataset(Dataset):
@@ -126,7 +125,7 @@ def generate_datasets():
     
     return train_dataset, val_dataset, test_dataset 
 
-def _get_or_download_data(max_sequence_length=2000, threshold=1.2):
+def _get_or_download_data(max_sequence_length=2000, topK=10):
     """
     Download pdbs and extract the binding sites. 
     """
@@ -135,65 +134,75 @@ def _get_or_download_data(max_sequence_length=2000, threshold=1.2):
     protein2_file_path = data_dir / 'protein2.fasta'
     data_dir.mkdir(parents=True, exist_ok=True)
 
-    # Check if protein sequence files exist, if not, download and process
-    # if not protein1_file_path.exists() or not protein2_file_path.exists():
-    if True:
-        warnings.simplefilter('ignore', PDBConstructionWarning)
-        query = AttributeQuery("rcsb_assembly_info.polymer_entity_instance_count_protein", "equals", 2,
-                    STRUCTURE_ATTRIBUTE_SEARCH_SERVICE # this constant specifies "text" service
-                    )
-        results = query.exec("entry")
+    warnings.simplefilter('ignore', PDBConstructionWarning)
+    query = AttributeQuery("rcsb_assembly_info.polymer_entity_instance_count_protein", "equals", 2,
+                STRUCTURE_ATTRIBUTE_SEARCH_SERVICE # this constant specifies "text" service
+                )
+    results = query.exec("entry")
 
-        pdb_ids = []
-        for i, assemblyid in enumerate(results):
-            pdb_ids.append(assemblyid)
-        
+    pdb_ids = [assemblyid for assemblyid in results]
 
-        pdbl = PDBList()
-        parser = PDBParser()
+    pdbl = PDBList()
+    parser = PDBParser()
 
-        sequences_1 = {}
-        sequences_2 = {}
+    sequences_1 = {}
+    sequences_2 = {}
 
-        # pdb_ids = pdb_ids[:100]
+    pdb_ids = pdb_ids[:100]
 
-        for pdb_id in pdb_ids:
-            pdb_files_path = data_dir / 'pdb_files'
-            pdbl.retrieve_pdb_file(pdb_id.lower(), pdir=pdb_files_path, file_format='pdb')
-            pdb_path = f"{pdb_files_path}/pdb{pdb_id.lower()}.ent"
-            if Path(pdb_path).exists():
-                structure = gemmi.read_structure(str(pdb_path))
-                structure.remove_waters()
-                
-                model = structure[0]
+    for pdb_id in pdb_ids:
+        pdb_files_path = data_dir / 'pdb_files'
+        pdbl.retrieve_pdb_file(pdb_id.lower(), pdir=pdb_files_path, file_format='pdb')
+        pdb_path = f"{pdb_files_path}/pdb{pdb_id.lower()}.ent"
+        if Path(pdb_path).exists():
+            structure = gemmi.read_structure(str(pdb_path))
+            structure.remove_waters()
+            
+            model = structure[0]
 
-                if len(model) != 2:
-                    continue
+            if len(model) != 2:
+                continue
 
-                coords, meta = model_to_index_list(model)
-                tree = KDTree(coords)
-                pairs = tree.query_pairs(r=threshold) # double check angstroms
+            chain1, chain2 = model[0], model[1]
+            coords1, meta1 = chain_to_index_list(chain1)
+            coords2, meta2 = chain_to_index_list(chain2)
 
-                labels = [0] * len(coords)
-                for m, (ix1, ix2) in enumerate(pairs):
-                    # don't count "self" binding
-                    if meta[ix1] == meta[ix2]:
-                        continue
-                    labels[ix1] = 1
-                    labels[ix2] = 1
+            tree1 = KDTree(coords1)
+            tree2 = KDTree(coords2)
 
+            closest_residues_1 = []
+            closest_residues_2 = []
+            added_residues_1 = set()
+            added_residues_2 = set()
 
-                protein_chains = [c.name for c in model if is_protein(c)]
-                
-                if len(protein_chains) == 2:
-                    protein1 = "".join([meta[i][2] for i in range(len(coords)) if (meta[i][0] == protein_chains[0]) and (meta[i][2] in standard_aa_codes) and (labels[i])])
-                    protein2 = "".join([meta[i][2] for i in range(len(coords)) if (meta[i][0] == protein_chains[1]) and (meta[i][2] in standard_aa_codes) and (labels[i])])
+            # find closest residues in group 2 for each residue in group 1
+            for i in range(len(coords2)):
+                chain_name, res_num = meta2[i][0], meta2[i][1]
+                dist, _ = tree1.query(coords2[i], k=1)
+                if (chain_name, res_num) not in added_residues_2:
+                    added_residues_2.add((chain_name, res_num))
+                    closest_residues_2.append((dist, meta2[i]))
 
-                if protein1 and protein2 and len(protein1) <= max_sequence_length and len(protein2) <= max_sequence_length:
-                    sequences_1[pdb_id] = protein1
-                    sequences_2[pdb_id] = protein2
-                
+            # find closest residues in group 2 for each residue in group 1
+            for i in range(len(coords1)):
+                chain_name, res_num = meta1[i][0], meta1[i][1]
+                dist, _ = tree2.query(coords1[i], k=1)
+                if (chain_name, res_num) not in added_residues_1:
+                    added_residues_1.add((chain_name, res_num))
+                    closest_residues_1.append((dist, meta1[i]))
 
+            # find top K in each direction
+            closest_residues_1.sort()
+            closest_residues_2.sort()
+
+            top_residues_1 = closest_residues_1[:topK]
+            top_residues_2 = closest_residues_2[:topK]
+
+            group1 = "".join([res[1][2] for res in top_residues_1])
+            group2 = "".join([res[1][2] for res in top_residues_2])
+
+            sequences_1[pdb_id] = group1
+            sequences_2[pdb_id] = group2
 
         # Write sequences of first chain to a single FASTA file
         with open(protein1_file_path, 'w') as fasta_file_A:

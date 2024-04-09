@@ -5,13 +5,6 @@ from Bio import SeqIO
 import random
 from torch.utils.data import Dataset
 
-from Bio import PDB
-from Bio.PDB import PDBList, PDBParser
-import warnings
-from Bio.PDB.PDBExceptions import PDBConstructionWarning
-from rcsbsearchapi.search import TextQuery
-from rcsbsearchapi import rcsb_attributes as attrs
-
 from rcsbsearchapi.const import CHEMICAL_ATTRIBUTE_SEARCH_SERVICE, STRUCTURE_ATTRIBUTE_SEARCH_SERVICE
 from rcsbsearchapi.search import AttributeQuery
 from modules import visualizations
@@ -33,6 +26,9 @@ from rcsbsearchapi import rcsb_attributes as attrs
 
 from rcsbsearchapi.const import CHEMICAL_ATTRIBUTE_SEARCH_SERVICE, STRUCTURE_ATTRIBUTE_SEARCH_SERVICE
 from rcsbsearchapi.search import AttributeQuery
+import requests
+import gzip
+from io import BytesIO
 
 standard_aa_codes = [
     'ALA', 'ARG', 'ASN', 'ASP', 'CYS',
@@ -125,94 +121,100 @@ def generate_datasets():
     
     return train_dataset, val_dataset, test_dataset 
 
-def _get_or_download_data(max_sequence_length=2000, topK=10):
+def _get_or_download_data(max_sequence_length=2000, topK=50, gcloud=True):
     """
     Download pdbs and extract the binding sites. 
     """
     data_dir = Path('data')
     protein1_file_path = data_dir / 'protein1.fasta'
     protein2_file_path = data_dir / 'protein2.fasta'
-    data_dir.mkdir(parents=True, exist_ok=True)
+    if not protein1_file_path.exists() or not protein2_file_path.exists():
+        data_dir.mkdir(parents=True, exist_ok=True)
 
-    warnings.simplefilter('ignore', PDBConstructionWarning)
-    query = AttributeQuery("rcsb_assembly_info.polymer_entity_instance_count_protein", "equals", 2,
-                STRUCTURE_ATTRIBUTE_SEARCH_SERVICE # this constant specifies "text" service
-                )
-    results = query.exec("entry")
+        warnings.simplefilter('ignore', PDBConstructionWarning)
+        if not gcloud:
+            query = AttributeQuery("rcsb_assembly_info.polymer_entity_instance_count_protein", "equals", 2,
+                        STRUCTURE_ATTRIBUTE_SEARCH_SERVICE # this constant specifies "text" service
+                        )
+            results = query.exec("entry")
+        else:
+            blob_url = 'https://storage.googleapis.com/rohit-general/pdb_structures/pdb_ids.txt.gz'
+            results_gz = requests.get(blob_url)
 
-    pdb_ids = [assemblyid for assemblyid in results]
+            with gzip.open(BytesIO(results_gz.content), 'rt') as f:
+                results = f.read()
+        
+        pdb_ids = [assemblyid for assemblyid in results.split('\n')]
 
-    pdbl = PDBList()
-    parser = PDBParser()
+        pdbl = PDBList()
+        parser = PDBParser()
 
-    sequences_1 = {}
-    sequences_2 = {}
+        sequences_1 = {}
+        sequences_2 = {}
 
-    pdb_ids = pdb_ids[:100]
+        for pdb_id in pdb_ids:
+            pdb_files_path = data_dir / 'pdb_files'
+            pdbl.retrieve_pdb_file(pdb_id.lower(), pdir=pdb_files_path, file_format='pdb')
+            pdb_path = f"{pdb_files_path}/pdb{pdb_id.lower()}.ent"
+            if Path(pdb_path).exists():
+                structure = gemmi.read_structure(str(pdb_path))
+                structure.remove_waters()
+                
+                model = structure[0]
 
-    for pdb_id in pdb_ids:
-        pdb_files_path = data_dir / 'pdb_files'
-        pdbl.retrieve_pdb_file(pdb_id.lower(), pdir=pdb_files_path, file_format='pdb')
-        pdb_path = f"{pdb_files_path}/pdb{pdb_id.lower()}.ent"
-        if Path(pdb_path).exists():
-            structure = gemmi.read_structure(str(pdb_path))
-            structure.remove_waters()
-            
-            model = structure[0]
+                if len(model) != 2:
+                    continue
 
-            if len(model) != 2:
-                continue
+                chain1, chain2 = model[0], model[1]
+                coords1, meta1 = chain_to_index_list(chain1)
+                coords2, meta2 = chain_to_index_list(chain2)
 
-            chain1, chain2 = model[0], model[1]
-            coords1, meta1 = chain_to_index_list(chain1)
-            coords2, meta2 = chain_to_index_list(chain2)
+                tree1 = KDTree(coords1)
+                tree2 = KDTree(coords2)
 
-            tree1 = KDTree(coords1)
-            tree2 = KDTree(coords2)
+                closest_residues_1 = []
+                closest_residues_2 = []
+                added_residues_1 = set()
+                added_residues_2 = set()
 
-            closest_residues_1 = []
-            closest_residues_2 = []
-            added_residues_1 = set()
-            added_residues_2 = set()
+                # find closest residues in group 2 for each residue in group 1
+                for i in range(len(coords2)):
+                    chain_name, res_num = meta2[i][0], meta2[i][1]
+                    dist, _ = tree1.query(coords2[i], k=1)
+                    if (chain_name, res_num) not in added_residues_2:
+                        added_residues_2.add((chain_name, res_num))
+                        closest_residues_2.append((dist, meta2[i]))
 
-            # find closest residues in group 2 for each residue in group 1
-            for i in range(len(coords2)):
-                chain_name, res_num = meta2[i][0], meta2[i][1]
-                dist, _ = tree1.query(coords2[i], k=1)
-                if (chain_name, res_num) not in added_residues_2:
-                    added_residues_2.add((chain_name, res_num))
-                    closest_residues_2.append((dist, meta2[i]))
+                # find closest residues in group 2 for each residue in group 1
+                for i in range(len(coords1)):
+                    chain_name, res_num = meta1[i][0], meta1[i][1]
+                    dist, _ = tree2.query(coords1[i], k=1)
+                    if (chain_name, res_num) not in added_residues_1:
+                        added_residues_1.add((chain_name, res_num))
+                        closest_residues_1.append((dist, meta1[i]))
 
-            # find closest residues in group 2 for each residue in group 1
-            for i in range(len(coords1)):
-                chain_name, res_num = meta1[i][0], meta1[i][1]
-                dist, _ = tree2.query(coords1[i], k=1)
-                if (chain_name, res_num) not in added_residues_1:
-                    added_residues_1.add((chain_name, res_num))
-                    closest_residues_1.append((dist, meta1[i]))
+                # find top K in each direction
+                closest_residues_1.sort()
+                closest_residues_2.sort()
 
-            # find top K in each direction
-            closest_residues_1.sort()
-            closest_residues_2.sort()
+                top_residues_1 = closest_residues_1[:topK]
+                top_residues_2 = closest_residues_2[:topK]
 
-            top_residues_1 = closest_residues_1[:topK]
-            top_residues_2 = closest_residues_2[:topK]
+                group1 = "".join([res[1][2] for res in top_residues_1])
+                group2 = "".join([res[1][2] for res in top_residues_2])
 
-            group1 = "".join([res[1][2] for res in top_residues_1])
-            group2 = "".join([res[1][2] for res in top_residues_2])
+                sequences_1[pdb_id] = group1
+                sequences_2[pdb_id] = group2
 
-            sequences_1[pdb_id] = group1
-            sequences_2[pdb_id] = group2
+            # Write sequences of first chain to a single FASTA file
+            with open(protein1_file_path, 'w') as fasta_file_A:
+                for pdb_id, sequence in sequences_1.items():
+                    fasta_file_A.write(f">{pdb_id}_chain_A\n{sequence}\n")
 
-        # Write sequences of first chain to a single FASTA file
-        with open(protein1_file_path, 'w') as fasta_file_A:
-            for pdb_id, sequence in sequences_1.items():
-                fasta_file_A.write(f">{pdb_id}_chain_A\n{sequence}\n")
-
-        # Write sequences of second chain to a single FASTA file
-        with open(protein2_file_path, 'w') as fasta_file_B:
-            for pdb_id, sequence in sequences_2.items():
-                fasta_file_B.write(f">{pdb_id}_chain_B\n{sequence}\n")
+            # Write sequences of second chain to a single FASTA file
+            with open(protein2_file_path, 'w') as fasta_file_B:
+                for pdb_id, sequence in sequences_2.items():
+                    fasta_file_B.write(f">{pdb_id}_chain_B\n{sequence}\n")
 
     protein1s, protein2s = [], []
 

@@ -29,6 +29,8 @@ from rcsbsearchapi.search import AttributeQuery
 import requests
 import gzip
 from io import BytesIO
+import os
+import json
 
 standard_aa_codes = [
     'ALA', 'ARG', 'ASN', 'ASP', 'CYS',
@@ -103,7 +105,7 @@ def generate_datasets():
     Returns:
         tuple: A tuple containing train, validation, and test datasets.
     """
-    protein1s, protein2s = _get_or_download_data()
+    protein1s, protein2s = _from_ppiref_get_or_download_data()
     clusters = _cluster_data(protein1s, protein2s)
     cluster_ids = list(clusters.keys())
     random.shuffle(cluster_ids) 
@@ -120,6 +122,77 @@ def generate_datasets():
     test_dataset = ProteinProteinDataset(clusters, test_clusters)
     
     return train_dataset, val_dataset, test_dataset 
+
+def _from_ppiref_get_or_download_data(max_sequence_length=2000, topK=50, gcloud=True, ppiref_dir = "/home/ubuntu/miniconda3/envs/protein-clip/lib/python3.10/site-packages/ppiref/", contact_name='6A'):
+    """
+    Download pdbs and extract the binding sites. 
+    """
+    from ppiref.extraction import PPIExtractor
+    from ppiref.definitions import PPIREF_TEST_DATA_DIR
+    from ppiref.utils.misc import download_from_zenodo
+    file = download_from_zenodo(f'ppi_{contact_name}.zip')
+    ppi_master_file_name = f'ppiref_{contact_name}_filtered_clustered_04.json'
+
+    data_dir = Path('data')
+    protein1_file_path = data_dir / 'protein1.fasta'
+    protein2_file_path = data_dir / 'protein2.fasta'
+    if not protein1_file_path.exists() or not protein2_file_path.exists():
+        # get pdb ids (file names) from /home/ubuntu/miniconda3/envs/protein-clip/lib/python3.10/site-packages/ppiref/data/splits/ppiref_6A_filtered_clustered_04.json
+        json_path = ppiref_dir + "data/splits/" + ppi_master_file_name
+        with open(json_path, 'r') as json_file:
+            results = json.load(json_file)
+        pdb_ids = results['folds']['whole']
+        print(f'{ppi_master_file_name} has {len(pdb_ids)} binding pairs.')
+
+        pdbl = PDBList()
+        parser = PDBParser()
+
+        sequences_1 = {}
+        sequences_2 = {}
+        
+        pdb_files_path_ppiref = ppiref_dir + 'data/ppiref/ppi_' + contact_name
+        for pdb_id in pdb_ids:
+            pdb_path = f"{pdb_files_path_ppiref}/{pdb_id[1:3]}/{pdb_id}.pdb"
+            if Path(pdb_path).exists():
+                # testing using primary structure; get sequences from each chain separately
+                structure = parser.get_structure("PDB_structure", pdb_path)
+                sequences = {}
+                model = structure[0]
+                chain_ids = [x.lower() for x in pdb_id.split('_')[1:]]
+                for chain in model:
+                    curr_chain_id = chain.id.lower()
+                    if curr_chain_id in chain_ids:
+                        seq = []
+                        for residue in chain:
+                            if PDB.is_aa(residue, standard=True):
+                                seq.append(PDB.Polypeptide.protein_letters_3to1.get(residue.resname.upper(), 'X'))
+                        sequences[curr_chain_id] = ''.join(seq)
+            if len(sequences) != 2: f"Expected 2 chains, got {len(sequences)} chains"
+            else:
+                # Write sequences of first chain to a single FASTA file
+                with open(protein1_file_path, 'a') as fasta_file_A:
+                    fasta_file_A.write(f">{pdb_id.split('_')[0]}_chain_{chain_ids[0]}\n{sequences[chain_ids[0]]}\n")
+
+                # Write sequences of second chain to a single FASTA file
+                with open(protein2_file_path, 'a') as fasta_file_B:
+                    fasta_file_B.write(f">{pdb_id.split('_')[0]}_chain_{chain_ids[1]}\n{sequences[chain_ids[1]]}\n")
+            
+
+    protein1s, protein2s = [], []
+
+    with open(protein1_file_path, 'r') as f:
+        for line in f.readlines():
+            if not line.startswith('>'):
+                protein1s.append(line.strip())
+    with open(protein2_file_path, 'r') as f:
+        for line in f.readlines():
+            if not line.startswith('>'):
+                protein2s.append(line.strip())
+
+    assert len(protein1s) == len(protein2s), "The number of protein1s and protein2s must be the same"
+    print(f"Imported {len(protein1s)} protein1s and {len(protein2s)} protein2s.")
+
+    return protein1s, protein2s
 
 def _get_or_download_data(max_sequence_length=2000, topK=50, gcloud=True):
     """
@@ -172,36 +245,52 @@ def _get_or_download_data(max_sequence_length=2000, topK=50, gcloud=True):
                 tree1 = KDTree(coords1)
                 tree2 = KDTree(coords2)
 
-                closest_residues_1 = []
-                closest_residues_2 = []
-                added_residues_1 = set()
-                added_residues_2 = set()
+                closest_residues = []
+                added_pairs = set() # keep track of pairs of indices
 
-                # find closest residues in group 2 for each residue in group 1
-                for i in range(len(coords2)):
-                    chain_name, res_num = meta2[i][0], meta2[i][1]
-                    dist, _ = tree1.query(coords2[i], k=1)
-                    if (chain_name, res_num) not in added_residues_2:
-                        added_residues_2.add((chain_name, res_num))
-                        closest_residues_2.append((dist, meta2[i]))
+                # find closest residues in group 1 for each residue in group 2
+                for j in range(len(coords2)):
+                    dist, i = tree1.query(coords2[j], k=1)
+                    # if we haven't seen this pair before
+                    if (i, j) not in added_pairs:
+                        added_pairs.add((i, j))
+                        closest_residues.append((dist, (i, j)))
 
-                # find closest residues in group 2 for each residue in group 1
+                # find closest residues in group 1 for each residue in group 2
                 for i in range(len(coords1)):
-                    chain_name, res_num = meta1[i][0], meta1[i][1]
-                    dist, _ = tree2.query(coords1[i], k=1)
-                    if (chain_name, res_num) not in added_residues_1:
-                        added_residues_1.add((chain_name, res_num))
-                        closest_residues_1.append((dist, meta1[i]))
+                    # if we haven't seen this pair before
+                    dist, j = tree2.query(coords1[i], k=1)
+                    if (i, j) not in added_pairs:
+                        added_pairs.add((i, j))
+                        closest_residues.append((dist, (i, j)))
 
-                # find top K in each direction
-                closest_residues_1.sort()
-                closest_residues_2.sort()
+                # find top K
+                closest_residues.sort()
+                top_residues_1 = closest_residues[:topK]
+                
+                # now sort by position
+                top_residues_1.sort(key=lambda x: x[1])
+                fragments = []
+                curr = []
+                window_size = 10
+                for _, pair in top_residues_1:
+                    # check if current index of is within window size
+                    if not curr or (pair[0] - curr[-1][0] <= window_size):
+                        curr.append(pair)
+                    else:
+                        fragments.append(curr)
+                        curr = []
 
-                top_residues_1 = closest_residues_1[:topK]
-                top_residues_2 = closest_residues_2[:topK]
+                if curr:
+                    fragments.append(curr)
 
-                group1 = "".join([res[1][2] for res in top_residues_1])
-                group2 = "".join([res[1][2] for res in top_residues_2])
+                print(fragments)
+
+                # convert to residues
+                group1 = [''.join([meta1[pair[0]][2] for pair in fragment]) for fragment in fragments]
+                group2 = [''.join([meta2[pair[1]][2] for pair in fragment]) for fragment in fragments]
+
+                print(group1)
 
                 sequences_1[pdb_id] = group1
                 sequences_2[pdb_id] = group2
@@ -215,6 +304,13 @@ def _get_or_download_data(max_sequence_length=2000, topK=50, gcloud=True):
             with open(protein2_file_path, 'w') as fasta_file_B:
                 for pdb_id, sequence in sequences_2.items():
                     fasta_file_B.write(f">{pdb_id}_chain_B\n{sequence}\n")
+
+            try:
+                os.remove(pdb_path)
+            except OSError as e:
+                print(f"Error deleting file: {pdb_path}")
+                print(f"Error message: {str(e)}")
+            
 
     protein1s, protein2s = [], []
 

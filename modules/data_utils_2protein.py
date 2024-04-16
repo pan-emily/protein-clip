@@ -15,47 +15,6 @@ from rcsbsearchapi import rcsb_attributes as attrs
 from rcsbsearchapi.const import CHEMICAL_ATTRIBUTE_SEARCH_SERVICE, STRUCTURE_ATTRIBUTE_SEARCH_SERVICE
 from rcsbsearchapi.search import AttributeQuery
 from modules import visualizations
-from pathlib import Path
-import requests
-import subprocess
-from Bio import SeqIO
-import random
-from torch.utils.data import Dataset
-from scipy.spatial import KDTree
-
-from Bio import PDB
-from Bio.PDB import PDBList, PDBParser
-import warnings
-from Bio.PDB.PDBExceptions import PDBConstructionWarning
-import gemmi
-from rcsbsearchapi.search import TextQuery
-from rcsbsearchapi import rcsb_attributes as attrs
-
-from rcsbsearchapi.const import CHEMICAL_ATTRIBUTE_SEARCH_SERVICE, STRUCTURE_ATTRIBUTE_SEARCH_SERVICE
-from rcsbsearchapi.search import AttributeQuery
-
-standard_aa_codes = [
-    'ALA', 'ARG', 'ASN', 'ASP', 'CYS',
-    'GLU', 'GLN', 'GLY', 'HIS', 'ILE',
-    'LEU', 'LYS', 'MET', 'PHE', 'PRO',
-    'SER', 'THR', 'TRP', 'TYR', 'VAL'
-]
-
-def is_protein(chain: gemmi.Chain) -> bool:
-    return any(
-        res.name in standard_aa_codes for res in chain.get_polymer()
-    )
-
-def model_to_index_list(model: gemmi.Model):
-    coords = []
-    meta = []
-    for chain in model:
-        for residue in chain:
-            for atom in residue:
-                coords.append(list(atom.pos))
-                meta.append((chain.name, residue.seqid.num, residue.name, atom.element.name, atom.name))
-    assert len(coords) == sum(len(res) for chain in model for res in chain)
-    return coords, meta
 
 class ProteinProteinDataset(Dataset):
     """
@@ -126,101 +85,6 @@ def generate_datasets():
     
     return train_dataset, val_dataset, test_dataset 
 
-def _get_or_download_data(max_sequence_length=2000, threshold=1.25):
-    """
-    Download pdbs and extract the binding sites. 
-    """
-    data_dir = Path('pdb')
-    protein1_file_path = data_dir / 'protein1.fasta'
-    protein2_file_path = data_dir / 'protein2.fasta'
-    data_dir.mkdir(parents=True, exist_ok=True)
-
-    # Check if protein sequence files exist, if not, download and process
-    # if not protein1_file_path.exists() or not protein2_file_path.exists():
-    if True:
-        warnings.simplefilter('ignore', PDBConstructionWarning)
-        query = AttributeQuery("rcsb_assembly_info.polymer_entity_instance_count_protein", "equals", 2,
-                    STRUCTURE_ATTRIBUTE_SEARCH_SERVICE # this constant specifies "text" service
-                    )
-        results = query.exec("entry")
-
-        pdb_ids = []
-        for i, assemblyid in enumerate(results):
-            pdb_ids.append(assemblyid)
-        
-
-        pdbl = PDBList()
-        parser = PDBParser()
-
-        sequences_1 = {}
-        sequences_2 = {}
-
-        pdb_ids = pdb_ids[:100]
-
-        for pdb_id in pdb_ids:
-            pdb_files_path = data_dir / 'pdb_files'
-            pdbl.retrieve_pdb_file(pdb_id.lower(), pdir=pdb_files_path, file_format='pdb')
-            pdb_path = f"{pdb_files_path}/pdb{pdb_id.lower()}.ent"
-            if Path(pdb_path).exists():
-                structure = gemmi.read_structure(str(pdb_path))
-                structure.remove_waters()
-                
-                model = structure[0]
-
-                if len(model) != 2:
-                    continue
-
-                coords, meta = model_to_index_list(model)
-                tree = KDTree(coords)
-                pairs = tree.query_pairs(r=threshold) # double check angstroms
-
-                labels = [0] * len(coords)
-                for m, (ix1, ix2) in enumerate(pairs):
-                    # don't count "self" binding
-                    if meta[ix1] == meta[ix2]:
-                        continue
-                    labels[ix1] = 1
-                    labels[ix2] = 1
-
-
-                protein_chains = [c.name for c in model if is_protein(c)]
-                
-                if len(protein_chains) == 2:
-                    protein1 = "".join([meta[i][2] for i in range(len(coords)) if (meta[i][0] == protein_chains[0]) and (meta[i][2] in standard_aa_codes) and (labels[i])])
-                    protein2 = "".join([meta[i][2] for i in range(len(coords)) if (meta[i][0] == protein_chains[1]) and (meta[i][2] in standard_aa_codes) and (labels[i])])
-
-                if protein1 and protein2:
-                    sequences_1[pdb_id] = protein1
-                    sequences_2[pdb_id] = protein2
-
-
-        # Write sequences of first chain to a single FASTA file
-        with open(protein1_file_path, 'w') as fasta_file_A:
-            for pdb_id, sequence in sequences_1.items():
-                fasta_file_A.write(f">{pdb_id}_chain_A\n{sequence}\n")
-
-        # Write sequences of second chain to a single FASTA file
-        with open(protein2_file_path, 'w') as fasta_file_B:
-            for pdb_id, sequence in sequences_2.items():
-                fasta_file_B.write(f">{pdb_id}_chain_B\n{sequence}\n")
-
-    protein1s, protein2s = [], []
-
-    with open(protein1_file_path, 'r') as f:
-        for line in f.readlines():
-            if not line.startswith('>'):
-                protein1s.append(line.strip())
-    with open(protein2_file_path, 'r') as f:
-        for line in f.readlines():
-            if not line.startswith('>'):
-                protein2s.append(line.strip())
-
-    assert len(protein1s) == len(protein2s), "The number of protein1s and protein2s must be the same"
-    print(f"Imported {len(protein1s)} protein1s and {len(protein2s)} protein2s.")
-
-    return protein1s, protein2s
-
-'''
 def _get_or_download_data(max_sequence_length=2000):
     """
     Get or download protein sequence data.
@@ -295,7 +159,6 @@ def _get_or_download_data(max_sequence_length=2000):
     print(f"Imported {len(protein1s)} protein1s and {len(protein2s)} protein2s.")
 
     return protein1s, protein2s
-'''
 
 def _cluster_data(protein1s, protein2s):
     """

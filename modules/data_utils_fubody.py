@@ -2,6 +2,7 @@ from pathlib import Path
 import requests
 import subprocess
 from Bio import SeqIO
+import torch
 import random
 from torch.utils.data import Dataset
 
@@ -21,6 +22,7 @@ import gzip
 from io import BytesIO
 import os
 import json
+import numpy as np
 
 standard_aa_codes = [
     'ALA', 'ARG', 'ASN', 'ASP', 'CYS',
@@ -28,6 +30,13 @@ standard_aa_codes = [
     'LEU', 'LYS', 'MET', 'PHE', 'PRO',
     'SER', 'THR', 'TRP', 'TYR', 'VAL'
 ]
+
+def extract_residue_features(residue):
+    # one hot encode amino acid type
+    aa_types = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L',
+                'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
+    aa_onehot = [1.0 if residue.get_resname() == aa else 0.0 for aa in aa_types]
+    return aa_onehot
 
 def is_protein(chain: gemmi.Chain) -> bool:
     return any(
@@ -114,7 +123,43 @@ def generate_datasets():
     
     return train_dataset, val_dataset, test_dataset 
 
-def convert_chain_to_graph(chain, max_residues):
+def generate_unpaired_datasets(max_residues=1000):
+    """
+    Generate train, validation, and test datasets for protein-protein interactions.
+    
+    Returns:
+        tuple: A tuple containing train, validation, and test datasets.
+    """
+    protein1s, protein2s = _from_ppiref_get_or_download_data(max_residues=max_residues)
+    print(len(protein1s), len(protein2s))
+    # turn these two lists into one singular list
+    all_proteins = protein1s + protein2s
+
+    # shuffle all_proteins
+    random.shuffle(all_proteins)
+
+    num_train = int(0.7 * len(all_proteins))
+    num_val = int(0.15 * len(all_proteins))
+
+    train_data = all_proteins[:num_train]
+    val_data = all_proteins[num_train:num_train+num_val]
+    test_data = all_proteins[num_train+num_val:]
+
+    tensor_datasets = []
+    for dataset in [train_data, val_data, test_data]:
+        feats_list = [torch.tensor(item[0]) for item in np.array(dataset)]
+        feats_tensor = torch.stack(feats_list).long()
+        coors_list = [torch.tensor(item[1]) for item in np.array(dataset)]
+        coors_tensor = torch.stack(coors_list).double()
+
+        tensor_dataset = TensorDataset(feats_tensor, coors_tensor)
+        dataloaders.append(tensor_dataset)
+
+    print(f'Data loaded. Number of samples: {len(all_proteins)}')
+    
+    return tensor_datasets 
+
+def convert_chain_to_graph(chain, max_residues=1000):
     feats = []
     coors = []
 
@@ -127,6 +172,7 @@ def convert_chain_to_graph(chain, max_residues):
 
         # extract residue features
         residue_feats = extract_residue_features(residue)
+        # residue_feats = PDB.Polypeptide.protein_letters_3to1.get(residue.resname.upper(), 'X')
         feats.append(residue_feats)
 
         # residue coords
@@ -158,7 +204,7 @@ def convert_chain_to_graph(chain, max_residues):
 
     return feats, coors, # edges
 
-def _from_ppiref_get_or_download_data(max_sequence_length=2000, topK=50, gcloud=True, ppiref_dir = "/home/ubuntu/miniconda3/envs/protein-clip/lib/python3.10/site-packages/ppiref/", contact_name='6A'):
+def _from_ppiref_get_or_download_data(max_sequence_length=2000, topK=50, gcloud=True, ppiref_dir = "/home/ubuntu/miniconda3/envs/protein-clip/lib/python3.10/site-packages/ppiref/", contact_name='6A', max_residues=1000):
     """
     Download pdbs and extract the binding sites. 
     """
@@ -173,8 +219,6 @@ def _from_ppiref_get_or_download_data(max_sequence_length=2000, topK=50, gcloud=
     protein2_file_path = data_dir / 'protein2.pt'
     if not protein1_file_path.exists() or not protein2_file_path.exists():
         # get pdb ids (file names) from /home/ubuntu/miniconda3/envs/protein-clip/lib/python3.10/site-packages/ppiref/data/splits/ppiref_6A_filtered_clustered_04.json
-        torch.save([], protein1_file_path)
-        torch.save([], protein2_file_path)
         
         json_path = ppiref_dir + "data/splits/" + ppi_master_file_name
         with open(json_path, 'r') as json_file:
@@ -185,8 +229,7 @@ def _from_ppiref_get_or_download_data(max_sequence_length=2000, topK=50, gcloud=
         pdbl = PDBList()
         parser = PDBParser()
 
-        sequences_1 = {}
-        sequences_2 = {}
+        processed_data_protein1 = []; processed_data_protein2 = []
         
         pdb_files_path_ppiref = ppiref_dir + 'data/ppiref/ppi_' + contact_name
         for pdb_id in pdb_ids:
@@ -194,7 +237,7 @@ def _from_ppiref_get_or_download_data(max_sequence_length=2000, topK=50, gcloud=
             if Path(pdb_path).exists():
                 # testing using primary structure; get sequences from each chain separately
                 structure = parser.get_structure("PDB_structure", pdb_path)
-                sequences = {}, graphs = {}
+                sequences = {}; graphs = {}
                 model = structure[0]
                 chain_ids = [x.lower() for x in pdb_id.split('_')[1:]]
                 for chain in model:
@@ -210,17 +253,12 @@ def _from_ppiref_get_or_download_data(max_sequence_length=2000, topK=50, gcloud=
             if len(sequences) != 2: f"Expected 2 chains, got {len(sequences)} chains"
             else:
                 # Write graphs of first chain to a single pt file
-                processed_data_protein1 = torch.load(protein1_file_path)
                 processed_data_protein1.append(graphs[chain_ids[0]])
-                torch.save(processed_data_protein1, protein1_file_path)
-
-                # Write graphs of second chain to a single pt file
-                processed_data_protein2 = torch.load(protein2_file_path)
                 processed_data_protein2.append(graphs[chain_ids[1]])
-                torch.save(processed_data_protein2, protein2_file_path)
-
-                # TODO: Keep track of sequences for later clustering or extract clusters from PPIRef
-
+        torch.save(processed_data_protein1, protein1_file_path)
+        torch.save(processed_data_protein2, protein2_file_path)
+    else:
+        print(f"Loading existing data from {protein1_file_path} and {protein2_file_path}")
     protein1s = torch.load(protein1_file_path)
     protein2s = torch.load(protein2_file_path)
 
@@ -243,23 +281,13 @@ def _cluster_data(protein1s, protein2s):
     data_dir = Path('data')
     clustered_file_path = data_dir / 'protein2DB_clustered.tsv'
 
-    if not clustered_file_path.exists():
-        commands = [
-            "mmseqs createdb protein2.fasta protein2DB",
-            "mmseqs cluster protein2DB protein2DB_clustered tmp --min-seq-id 0.5",
-            "mmseqs createtsv protein2DB protein2DB protein2DB_clustered protein2DB_clustered.tsv"
-        ]
-
-        for cmd in commands:
-            _run_command(cmd)
-
     id_to_seq = {}
-    protein2s_parsed = list(SeqIO.parse(data_dir / 'protein2.fasta', 'fasta'))
-    for protein2_parsed in protein2s_parsed:
-        id_to_seq[protein2_parsed.id] = str(protein2_parsed.seq)
+    for i, e in enumerate(zip(protein2s, protein1s)):
+        id_to_seq[i] = e
     protein2_to_protein1 = dict(zip(protein2s, protein1s))
 
     clusters = {}
+    '''
     with open(clustered_file_path, 'r') as f:
         for line in f:
             cluster_id, protein2_id = line.strip().split("\t")
@@ -272,7 +300,8 @@ def _cluster_data(protein1s, protein2s):
                 clusters[cluster_id].append((protein1_sequence, protein2_sequence))
             else:
                 print(f"Missing sequence match for: {protein2_sequence}")
-
+    '''
+    clusters = id_to_seq
     print(len(clusters))
     clusters = {cid: clust for cid, clust in clusters.items() if clust}
     print(len(clusters))

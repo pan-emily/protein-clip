@@ -16,7 +16,7 @@ base_path = f'{os.getcwd()}/runs/{timestamp}'
 os.makedirs(base_path, exist_ok=True)
 print(f"All run info will be saved to {base_path}")
 
-BATCH_SIZE = 32
+BATCH_SIZE = 8
 EPOCHS = 1000
 
 train_dataset, val_dataset, test_dataset = data_utils_fubody.generate_unpaired_datasets(max_residues=1000)
@@ -47,6 +47,7 @@ def train():
     print(f"Losses will be saved to {losses_save_path}")
     
     with open(losses_save_path, 'w') as f:
+
         f.write('Epoch,Train Loss\n')
         for epoch in range(EPOCHS):
             net.train()

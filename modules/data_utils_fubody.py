@@ -147,17 +147,17 @@ def generate_unpaired_datasets(max_residues=1000):
 
     tensor_datasets = []
     for dataset in [train_data, val_data, test_data]:
-        feats_list = [torch.tensor(item[0]) for item in np.array(dataset)]
-        feats_tensor = torch.stack(feats_list).long()
-        coors_list = [torch.tensor(item[1]) for item in np.array(dataset)]
-        coors_tensor = torch.stack(coors_list).double()
+        feats_list = [item[0].clone().detach() for item in dataset]
+        feats_tensor = torch.stack(feats_list).long()  # Convert to long only if necessary
+        coors_list = [item[1].clone().detach() for item in dataset]
+        coors_tensor = torch.stack(coors_list).double()  # Convert to double only if necessary
 
         tensor_dataset = TensorDataset(feats_tensor, coors_tensor)
-        dataloaders.append(tensor_dataset)
+        tensor_datasets.append(tensor_dataset)
 
     print(f'Data loaded. Number of samples: {len(all_proteins)}')
     
-    return tensor_datasets 
+    return tensor_datasets
 
 def convert_chain_to_graph(chain, max_residues=1000):
     feats = []

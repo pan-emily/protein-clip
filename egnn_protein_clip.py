@@ -179,17 +179,24 @@ class NewProteinDataset(Dataset):
         if curr_cluster:
             sequence1 = self.clusters[idx][0]
             sequence2 = self.clusters[idx][1]
-            features1 = self._to_tensor(sequence1[0], dtype=torch.long, device=device)
+
+
+
+            
+            # these should be letter strings not longs
+            #features1 = self._to_tensor(sequence1[0], dtype=torch.long, device=device)
+            #features2 = self._to_tensor(sequence2[0], dtype=torch.long, device=device)
+            
+            
+            
             coords1 = self._to_tensor(sequence1[1], dtype=torch.float, device=device)
-            features2 = self._to_tensor(sequence2[0], dtype=torch.long, device=device)
             coords2 = self._to_tensor(sequence2[1], dtype=torch.float, device=device)
-            # Convert one-hot encoded features to letters
-            features1 = [self.aa_types[torch.argmax(feature)] if torch.any(feature) else 'X' for feature in features1]
-            features2 = [self.aa_types[torch.argmax(feature)] if torch.any(feature) else 'X' for feature in features2]
-            # check if any other values other than 0 in features1
-            # turn features into string and make string tensor to be on device
-            features1 = torch.tensor(''.join(features1), dtype=torch.str, device=device)
-            features2 = torch.tensor(''.join(features2), dtype=torch.str, device=device)
+            # # Convert one-hot encoded features to letters
+            # features1 = [self.aa_types[torch.argmax(feature)] if torch.any(feature) else 'X' for feature in features1]
+            # features2 = [self.aa_types[torch.argmax(feature)] if torch.any(feature) else 'X' for feature in features2]
+            # # turn features into string and make string tensor to be on device
+            # features1 = torch.tensor(''.join(features1), dtype=torch.str, device=device)
+            # features2 = torch.tensor(''.join(features2), dtype=torch.str, device=device)
         return None
 
     @staticmethod

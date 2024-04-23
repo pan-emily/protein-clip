@@ -61,10 +61,10 @@ class Encoder(nn.Module):
         return adj_mat
 
 class ExtendedCLIP(nn.Module):
-    def __init__(self, input_dim, embedding_dim, h1, h2, dropout, esm_model, egnn_model):
+    def __init__(self, input_dim, embedding_dim, h1, h2, dropout, esm_model, egnn_model1, egnn_model2):
         super(ExtendedCLIP, self).__init__()
-        self.encoder1 = Encoder(input_dim, embedding_dim, h1, h2, dropout, esm_model, egnn_model)
-        self.encoder2 = Encoder(input_dim, embedding_dim, h1, h2, dropout, esm_model, egnn_model)
+        self.encoder1 = Encoder(input_dim, embedding_dim, h1, h2, dropout, esm_model, egnn_model1)
+        self.encoder2 = Encoder(input_dim, embedding_dim, h1, h2, dropout, esm_model, egnn_model2)
         self.temperature = nn.Parameter(torch.tensor(1.0))
 
     def forward(self, seq1, seq2):
@@ -87,12 +87,13 @@ input_dim = 640
 sequence = ["XXX", "AAAAA"]
 encoded_seq = tokenizer(sequence, return_tensors="pt", padding=True)
 hidden_states = esm_model.embeddings(**encoded_seq)
+print(hidden_states)
 print(encoded_seq["attention_mask"])
 print(hidden_states.shape) #shape: (1, start + seq + end + 0s with bool mask in encoded_seq['attention_mask'], input_dim)
 
 
 # set model hyperparameters
-egnn_model = EGNN_Network(
+egnn_model1 = EGNN_Network(
     num_tokens=input_dim,
     num_positions=1000 * 3,
     dim=32,
@@ -104,9 +105,23 @@ egnn_model = EGNN_Network(
     update_coors=False,
     coor_weights_clamp_value=2.0
 )
+egnn_model2 = EGNN_Network(
+    num_tokens=input_dim,
+    num_positions=1000 * 3,
+    dim=32,
+    depth=5,
+    num_nearest_neighbors=16, #maybe ignored 
+    fourier_features=2,
+    norm_coors=True,
+    update_feats=True,
+    update_coors=False,
+    coor_weights_clamp_value=2.0
+)
+
 embedding_dim = 128
 h1 = 2
 h2 = 2
 dropout = 0.1
-trained_model = ExtendedCLIP(input_dim, embedding_dim, h1, h2, dropout, esm_model, egnn_model)
+trained_model = ExtendedCLIP(input_dim, embedding_dim, h1, h2, dropout, esm_model, egnn_model1, egnn_model2)
+
 

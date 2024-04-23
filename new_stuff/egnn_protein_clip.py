@@ -122,6 +122,15 @@ embedding_dim = 128
 h1 = 2
 h2 = 2
 dropout = 0.1
+
+data_dir = Path('data')
+protein1_file_path = data_dir / 'protein1.pt'
+protein2_file_path = data_dir / 'protein2.pt'
+protein1s = torch.load(protein1_file_path)
+protein2s = torch.load(protein2_file_path)
+
+
+
 trained_model = ExtendedCLIP(input_dim, embedding_dim, h1, h2, dropout, esm_model, egnn_model1, egnn_model2)
 
 

@@ -282,7 +282,7 @@ def _cluster_data(protein1s, protein2s):
     clustered_file_path = data_dir / 'protein2DB_clustered.tsv'
 
     id_to_seq = {}
-    for i, e in enumerate(zip(protein2s, protein1s)):
+    for i, e in enumerate(zip(protein1s, protein2s)):
         id_to_seq[i] = e
     protein2_to_protein1 = dict(zip(protein2s, protein1s))
 
@@ -302,7 +302,6 @@ def _cluster_data(protein1s, protein2s):
                 print(f"Missing sequence match for: {protein2_sequence}")
     '''
     clusters = id_to_seq
-    print(len(clusters))
     clusters = {cid: clust for cid, clust in clusters.items() if clust}
     print(len(clusters))
     return clusters

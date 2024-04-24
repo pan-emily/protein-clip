@@ -13,7 +13,7 @@ def load_or_process_data(ppiref_dir="/home/ubuntu/miniconda3/envs/protein-clip/l
     protein2_path = data_dir / 'protein2.pt'
     data_dir.mkdir(parents=True, exist_ok=True)
 
-    if True or not protein1_path.exists() or not protein2_path.exists():
+    if not protein1_path.exists() or not protein2_path.exists():
         pdb_ids = load_pdb_ids(json_path)
         process_and_save_pdb_data(pdb_ids, protein1_path, protein2_path, ppiref_dir, contact_name)
 

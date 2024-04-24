@@ -254,7 +254,7 @@ train_dataset = NewProteinDataset(clusters, train_clusters)
 val_dataset = NewProteinDataset(clusters, val_clusters)
 test_dataset = NewProteinDataset(clusters, test_clusters)
 
-BATCH_SIZE = 16
+BATCH_SIZE = 32
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=True)
 test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=True)
@@ -386,6 +386,7 @@ def train_gc(model, data_loader, optimizer, scaler, device, accumulated_batches=
 
     return total_loss / big_batches
 
+@cached
 @autocast()
 def _call_model_gc(model, input):
     return model(input)
@@ -476,7 +477,7 @@ optimizer = Adam(trained_model.parameters(), lr=1e-3)
 training_with_grad_cache = True
 if training_with_grad_cache:
     scaler = GradScaler()
-    accumulated_batches = 16
+    accumulated_batches = 32
 
 train_losses, val_losses = [], []
 best_val_loss = float('inf')

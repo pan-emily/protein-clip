@@ -5,14 +5,15 @@ from torch.utils.data import DataLoader
 from torch.cuda.amp import GradScaler
 from transformers import EsmModel, EsmTokenizer
 
-from modules import seed, models, data_utils_fubody, visualizations, training_utils
+from modules import seed, models, data_utils_2protein, visualizations, training_utils
 from pathlib import Path
 
 def main():
+    batch_size = 8
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     seed.set_seed()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-    base_path = f'{os.getcwd()}/runs/{timestamp}'
+    base_path = f'{os.getcwd()}/runs/{timestamp}_batchsize{batch_size}x16'
     os.makedirs(base_path, exist_ok=True)
     print(f"All run info will be saved to {base_path}")
 
@@ -31,7 +32,6 @@ def main():
     trained_model = models.ExtendedCLIP(input_dim, embedding_dim, h1, h2, dropout, esm_model).to(device)
 
     # set dataloader hyperparameters
-    batch_size = 16
     train_dataset, val_dataset, test_dataset = data_utils_2protein.generate_datasets()
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
@@ -42,7 +42,7 @@ def main():
     visualizations.plot_protein_lengths(base_path, data_dir)
 
     # set training hyperparameters 
-    num_epochs = 20
+    num_epochs = 30
     optimizer = torch.optim.Adam(trained_model.parameters(), lr=1e-3)
     training_with_grad_cache = True
     if training_with_grad_cache:

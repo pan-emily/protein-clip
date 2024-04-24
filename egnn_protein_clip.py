@@ -1,49 +1,48 @@
 from pathlib import Path
 import torch
 from torch import nn
+import torch.nn.functional as F
 from torch.optim import Adam
 from transformers import EsmTokenizer, EsmModel
 from egnn_pytorch import EGNN_Network
-from modules import seed, visualizations
+from modules import seed
 import os 
 from datetime import datetime
-
+import matplotlib.pyplot as plt
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 seed.set_seed()
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-base_path = f'{os.getcwd()}/runs/{timestamp}'
-os.makedirs(base_path, exist_ok=True)
-print(f"All run info will be saved to {base_path}")
 
 
+
+
+
+# model functions
 class Encoder(nn.Module):
     def __init__(self, input_dim, embedding_dim, h1, h2, dropout_rate, esm_model, egnn_model):
         super(Encoder, self).__init__()
         self.esm_model = esm_model
         self.egnn_model = egnn_model
-        self.projection = nn.Linear(input_dim, embedding_dim)
+        self.projection = nn.Linear(33, embedding_dim)
         self.amino_acid_ffn = self._build_ffn(embedding_dim, h1, dropout_rate)
         self.embedding_ffn = self._build_ffn(embedding_dim, h2, dropout_rate)
+        self.egnn_model.token_emb.weight = torch.nn.Parameter(
+            self.esm_model.embeddings.word_embeddings.weight.t(), 
+            requires_grad=False
+        )
 
     def forward(self, seq):
-        input_ids = seq['input_ids']
-        attn_mask = seq['attention_mask']
-        temperature = seq['temperature']
+        feats = seq['feats']
+        mask = seq['mask']
+        adj_mat = seq['adj_mat']
         coords = seq['coords']
-        batch_size = coords.shape[0]
-        num_nodes = coords.shape[1]
+        temperature = seq['temperature']
 
-        # get feat embeddings from esm
-        esm_embedding = self.esm_model.embeddings(input_ids=input_ids, attention_mask=attn_mask)
-
-        # send to egnn with coords 
-        egnn_embedding, _ = egnn_model(esm_embedding, coords, adj_mat=_get_adj_mat(batch_size, num_nodes), mask=attn_mask)
-
+        egnn_embedding, _ = self.egnn_model(feats.argmax(dim=-1), coords, adj_mat=adj_mat, mask=mask.bool())
         embedding = self.projection(egnn_embedding)
         amino_acid_embedding = self.amino_acid_ffn(embedding)
-        mean_embedding = self._masked_mean(amino_acid_embedding, attn_mask)
+        mean_embedding = self._masked_mean(amino_acid_embedding, mask)
         embedding_output = self.embedding_ffn(mean_embedding)
         normed_embedding = F.normalize(embedding_output, dim=-1)
         scaled_embedding = normed_embedding * torch.exp(temperature / 2)
@@ -66,14 +65,6 @@ class Encoder(nn.Module):
         mean_masked_h = sum_masked_h.div_(count_non_masked)
         return mean_masked_h
 
-    @staticmethod
-    def _get_adj_mat(batch_size, num_nodes):
-        adj_mat = torch.zeros(batch_size, num_nodes, num_nodes, dtype=torch.bool)
-        for i in range(num_nodes):
-            for j in range(num_nodes):
-                if abs(i - j) <= 1:
-                    adj_mat[:, i, j] = mask[:, i] & mask[:, j]
-        return adj_mat
 
 class ExtendedCLIP(nn.Module):
     def __init__(self, input_dim, embedding_dim, h1, h2, dropout, esm_model, egnn_model1, egnn_model2):
@@ -90,12 +81,17 @@ class ExtendedCLIP(nn.Module):
         return embedding1, embedding2
 
 
-tokenizer = EsmTokenizer.from_pretrained("facebook/esm2_t30_150M_UR50D")
+
+
+
+
+
+
+# set model hyperparameters
 esm_model = EsmModel.from_pretrained("facebook/esm2_t30_150M_UR50D")
 for param in esm_model.parameters():
     param.requires_grad = False
 input_dim = 640
-
 
 # checking esm embedding
 # sequence = ["XXX", "AAAAA"]
@@ -105,12 +101,10 @@ input_dim = 640
 # print(encoded_seq["attention_mask"])
 # print(hidden_states.shape) #shape: (1, start + seq + end + 0s with bool mask in encoded_seq['attention_mask'], input_dim)
 
-
-# set model hyperparameters
 egnn_model1 = EGNN_Network(
     num_tokens=input_dim,
     num_positions=1000 * 3,
-    dim=32,
+    dim=33,
     depth=5,
     num_nearest_neighbors=16, #maybe ignored 
     fourier_features=2,
@@ -122,7 +116,7 @@ egnn_model1 = EGNN_Network(
 egnn_model2 = EGNN_Network(
     num_tokens=input_dim,
     num_positions=1000 * 3,
-    dim=32,
+    dim=33,
     depth=5,
     num_nearest_neighbors=16, #maybe ignored 
     fourier_features=2,
@@ -158,18 +152,15 @@ protein2s = torch.load(protein2_file_path)
 
 
 
-
+# dataset class
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import random
-
 
 class NewProteinDataset(Dataset):
     def __init__(self, clusters, ids):
         self.clusters = clusters
         self.cluster_ids = ids
-        self.aa_types = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L',
-                'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
 
     def __len__(self):
         return len(self.cluster_ids)
@@ -179,31 +170,69 @@ class NewProteinDataset(Dataset):
         if curr_cluster:
             sequence1 = self.clusters[idx][0]
             sequence2 = self.clusters[idx][1]
-
-
-
-            
-            # these should be letter strings not longs
-            #features1 = self._to_tensor(sequence1[0], dtype=torch.long, device=device)
-            #features2 = self._to_tensor(sequence2[0], dtype=torch.long, device=device)
-            
-            
-            
-            coords1 = self._to_tensor(sequence1[1], dtype=torch.float, device=device)
-            coords2 = self._to_tensor(sequence2[1], dtype=torch.float, device=device)
-            # # Convert one-hot encoded features to letters
-            # features1 = [self.aa_types[torch.argmax(feature)] if torch.any(feature) else 'X' for feature in features1]
-            # features2 = [self.aa_types[torch.argmax(feature)] if torch.any(feature) else 'X' for feature in features2]
-            # # turn features into string and make string tensor to be on device
-            # features1 = torch.tensor(''.join(features1), dtype=torch.str, device=device)
-            # features2 = torch.tensor(''.join(features2), dtype=torch.str, device=device)
+            features1, mask1 = NewProteinDataset._string_to_one_hot(''.join([chr(res_ascii) for res_ascii in sequence1[0]]))
+            features2, mask2 = NewProteinDataset._string_to_one_hot(''.join([chr(res_ascii) for res_ascii in sequence2[0]]))
+            coords1 = sequence1[1]
+            coords2 = sequence2[1]
+            return ((features1, mask1), coords1), ((features2, mask2), coords2)
         return None
-
+    
     @staticmethod
-    def _to_tensor(data, dtype, device):
-        return data.clone().detach().to(dtype=dtype, device=device) if torch.is_tensor(data) else torch.tensor(data, dtype=dtype, device=device)
+    def _string_to_one_hot(string):
+        vocab_list = (
+        "<cls>",
+        "<pad>",
+        "<eos>",
+        "<unk>",
+        "L",
+        "A",
+        "G",
+        "V",
+        "S",
+        "E",
+        "R",
+        "T",
+        "I",
+        "D",
+        "P",
+        "K",
+        "Q",
+        "N",
+        "F",
+        "Y",
+        "M",
+        "H",
+        "W",
+        "C",
+        "X",
+        "B",
+        "U",
+        "Z",
+        "O",
+        ".",
+        "-",
+        "<null_1>",
+        "<mask>",
+        )
+        vocab_index = {char: idx for idx, char in enumerate(vocab_list)}
+
+        one_hot_tensor = torch.zeros((len(string), len(vocab_list)), dtype=torch.int32)
+        mask = torch.zeros((len(string),), dtype=torch.int16)
+        for i, char in enumerate(string):
+            if char in vocab_index:
+                one_hot_tensor[i, vocab_index[char]] = 1
+                mask[i] = 1
+        return one_hot_tensor, mask
 
 
+
+
+
+
+
+
+
+# loading data
 clusters = {}
 for i, e in enumerate(zip(protein1s, protein2s)):
     clusters[i] = e
@@ -232,40 +261,56 @@ test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, dro
 
 
 
-
-
-
-def train(model, data_loader, optimizer, tokenizer, device):
+# train functions
+def train(model, data_loader, optimizer, device):
     model.train()
     total_loss = 0
     for batch_data in data_loader:
         optimizer.zero_grad()
-        loss = _process_batch(model, batch_data, tokenizer, device, compute_grad=True)
+        loss = _process_batch(model, batch_data, device, compute_grad=True)
         optimizer.step()
         total_loss += loss
     return total_loss / len(data_loader)
 
-def evaluate(model, data_loader, tokenizer, device):
+def evaluate(model, data_loader, device):
     model.eval()
     total_loss = 0
     with torch.no_grad():
         for step, batch_data in enumerate(data_loader):
-            loss = _process_batch(model, batch_data, tokenizer, device)
+            loss = _process_batch(model, batch_data, device)
             total_loss += loss
     return total_loss / len(data_loader)
 
-def _process_batch(model, batch_data, tokenizer, device, compute_grad=False):
+def _process_batch(model, batch_data, device, compute_grad=False):
     sequence1, sequence2 = batch_data
-    breakpoint()
-    sequence1 = tokenizer(sequence1[0], return_tensors='pt', padding=True).to(device)
-    sequence2 = tokenizer(sequence2[0], return_tensors='pt', padding=True).to(device)
-    sequence1['coords'] = sequence1[1]
-    sequence2['coords'] = sequence2[1]
-    embedding1, embedding2 = model(sequence2, sequence2)
+
+    seq1 = {}
+    seq1['feats'] = sequence1[0][0].to(device)
+    seq1['mask'] = sequence1[0][1].to(device)
+    seq1['adj_mat'] = _get_adj_mat(sequence1[0][1]).to(device)
+    seq1['coords'] = sequence1[1].to(device)
+
+    seq2 = {}
+    seq2['feats'] = sequence2[0][0].to(device)
+    seq2['mask'] = sequence2[0][1].to(device)
+    seq2['adj_mat'] = _get_adj_mat(sequence2[0][1]).to(device)
+    seq2['coords'] = sequence2[1].to(device)
+    
+    embedding1, embedding2 = model(seq1, seq2)
     loss = _contrastive_loss(embedding1, embedding2.t())
     if compute_grad:
         loss.backward()
     return loss.item()
+
+def _get_adj_mat(mask):
+    batch_size = mask.shape[0]
+    num_nodes = mask.shape[1]
+    adj_mat = torch.zeros(batch_size, num_nodes, num_nodes, dtype=torch.bool)
+    for i in range(num_nodes):
+        for j in range(num_nodes):
+            if abs(i - j) <= 1:
+                adj_mat[:, i, j] = mask[:, i] & mask[:, j]
+    return adj_mat
 
 def _contrastive_loss(embedding1, embedding2):
     logits = torch.mm(embedding1, embedding2)
@@ -275,48 +320,95 @@ def _contrastive_loss(embedding1, embedding2):
     return (L_r + L_p) * 0.5
 
 
+
+
+
+
+
+
+
+
+
+def plot_embedding_cosine_similarities(base_path, title, data_loader, model, device):
+    sequence1, sequence2 =  next(iter(data_loader))
+
+    seq1 = {}
+    seq1['feats'] = sequence1[0][0].to(device)
+    seq1['mask'] = sequence1[0][1].to(device)
+    seq1['adj_mat'] = _get_adj_mat(sequence1[0][1]).to(device)
+    seq1['coords'] = sequence1[1].to(device)
+
+    seq2 = {}
+    seq2['feats'] = sequence2[0][0].to(device)
+    seq2['mask'] = sequence2[0][1].to(device)
+    seq2['adj_mat'] = _get_adj_mat(sequence2[0][1]).to(device)
+    seq2['coords'] = sequence2[1].to(device)
+    
+    embedding1, embedding2 = model(seq1, seq2)
+    similarity_matrix = _compute_embedding_cosine_similarities(model, embedding1, embedding2)
+    similarity_matrix_np = similarity_matrix.cpu().detach().numpy()
+
+    plt.figure(figsize=(6, 4))
+    plt.imshow(similarity_matrix_np, cmap="ocean", vmin=-1, vmax=1)
+    plt.colorbar()
+    plt.title(title)
+    plt.xlabel("Sequence 1")
+    plt.ylabel("Sequence 2")
+    plot_path = _save_plot(base_path)
+    print(f"{title} plot saved to {plot_path}")
+
+def _compute_embedding_cosine_similarities(model, embedding1, embedding2):
+    similarity_matrix = torch.mm(embedding1, embedding2.t())
+    return similarity_matrix * torch.exp(-model.temperature)
+
+def _save_plot(base_path, fig_num=[1]):
+    folder_path = os.path.join(base_path, "figures")
+    os.makedirs(folder_path, exist_ok=True)
+    filename = f"figure {fig_num[0]}.png"
+    plot_path = os.path.join(folder_path, filename)
+    plt.tight_layout()
+    plt.savefig(plot_path)
+    plt.clf()
+    fig_num[0] += 1
+    return plot_path
+
+
+
+
+
+
+
+# training script
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+base_path = f'{os.getcwd()}/runs/{timestamp}'
+os.makedirs(base_path, exist_ok=True)
+print(f"All run info will be saved to {base_path}")
 num_epochs = 20
 optimizer = Adam(trained_model.parameters(), lr=1e-3)
 
-# init before training
 train_losses, val_losses = [], []
 best_val_loss = float('inf')
 best_model_state = None
-"""
-(protein-clip) �  protein-clip git:(continuation-spring-2024) � python egnn_protein_clip.py
-All run info will be saved to /home/ubuntu/protein-clip/runs/20240423_062624_576605
-Some weights of EsmModel were not initialized from the model checkpoint at facebook/esm2_t30_150M_UR50D and are newly initialized: ['esm.pooler.dense.bias', 'esm.pooler.dense.weight']
-You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
-Traceback (most recent call last):
-  File "/home/ubuntu/protein-clip/egnn_protein_clip.py", line 269, in <module>
-    visualizations.plot_embedding_cosine_similarities(base_path, "Raw Embedding Cosine Similarities", train_loader, tokenizer, trained_model, device)
-  File "/home/ubuntu/protein-clip/modules/visualizations.py", line 23, in plot_embedding_cosine_similarities
-    curr_peptides = tokenizer(curr_peptides, return_tensors='pt', padding=True).to(device)
-  File "/home/ubuntu/miniconda3/envs/protein-clip/lib/python3.10/site-packages/transformers/tokenization_utils_base.py", line 2602, in __call__
-    encodings = self._call_one(text=text, text_pair=text_pair, **all_kwargs)
-  File "/home/ubuntu/miniconda3/envs/protein-clip/lib/python3.10/site-packages/transformers/tokenization_utils_base.py", line 2660, in _call_one
-    raise ValueError(
-ValueError: text input must of type `str` (single example), `List[str]` (batch or single pretokenized example) or `List[List[str]]` (batch of pretokenized examples).
-"""
-# visualizations.plot_embedding_cosine_similarities(base_path, "Raw Embedding Cosine Similarities", train_loader, tokenizer, trained_model, device)
+plot_embedding_cosine_similarities(base_path, "Raw Embedding Cosine Similarities", train_loader, trained_model, device)
 model_save_path = f'{base_path}/best_model.pth'
 losses_save_path = f'{base_path}/losses_per_epoch.txt'
 print(f"Best model will be saved to {model_save_path}")
 print(f"Losses will be saved to {losses_save_path}")
 
-# training 
 with open(losses_save_path, 'w') as f:
     f.write('Epoch,Train Loss,Validation Loss\n')
 
     for epoch in range(num_epochs):
         print('new epoch')
-        train_loss = train(trained_model, train_loader, optimizer, tokenizer, device)
-        val_loss = evaluate(trained_model, val_loader, tokenizer, device)
+        train_loss = train(trained_model, train_loader, optimizer, device)
+        val_loss = evaluate(trained_model, val_loader, device)
 
         train_losses.append(train_loss)
         val_losses.append(val_loss)
 
         f.write(f"{epoch + 1},{train_loss:.4f},{val_loss:.4f}\n")
+        print(f"{epoch + 1},{train_loss:.4f},{val_loss:.4f}\n")
+
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
@@ -325,6 +417,6 @@ with open(losses_save_path, 'w') as f:
             best_trained_model = ExtendedCLIP(input_dim, embedding_dim, h1, h2, dropout, esm_model, egnn_model1, egnn_model2).to(device)
             best_trained_model.load_state_dict(torch.load(model_save_path))
 
-        # visualizations.plot_embedding_cosine_similarities(base_path, f"Trained Embedding Cosine Similarities on Train Set - Epoch {epoch + 1}", train_loader, tokenizer, best_trained_model, device)    
-        # visualizations.plot_embedding_cosine_similarities(base_path, f"Trained Embedding Cosine Similarities on Val Set - Epoch {epoch + 1}", val_loader, tokenizer, best_trained_model, device)
+        plot_embedding_cosine_similarities(base_path, f"Trained Embedding Cosine Similarities on Train Set - Epoch {epoch + 1}", train_loader, best_trained_model, device)    
+        plot_embedding_cosine_similarities(base_path, f"Trained Embedding Cosine Similarities on Val Set - Epoch {epoch + 1}", val_loader, best_trained_model, device)
 
